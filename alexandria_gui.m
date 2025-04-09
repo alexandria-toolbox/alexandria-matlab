@@ -38,7 +38,10 @@ model = user_inputs.tab_1.model;
 % if model is linear regression, run main code for linear regression, and return model
 if model == 1
     lr = linear_regression_main_code(user_inputs);
+    
+% else, if model is vector autoregression, run main code for vector autoregression, and return model
+elseif model == 2
+    var = vector_autoregression_main_code(user_inputs);
+    
 end
-
-
 

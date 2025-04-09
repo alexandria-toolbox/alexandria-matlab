@@ -1,4 +1,4 @@
-classdef AutocorrelatedBayesianRegression < handle & LinearRegression
+classdef AutocorrelatedBayesianRegression < handle & LinearRegression & BayesianRegression
     
     
     % Autocorrelated Bayesian linear regression, developed in section 9.6
@@ -172,15 +172,15 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
     % mcmc_phi : matrix of size (q,iterations)
     %     storage of mcmc values for phi
     %
-    % estimates_beta : matrix of size (k,4)
-    %     posterior estimates for beta
-    %     column 1: interval lower bound; column 2: median; 
+    % beta_estimates : matrix of size (k,4)
+    %     estimates for beta
+    %     column 1: point estimate; column 2: interval lower bound; 
     %     column 3: interval upper bound; column 4: standard deviation
     %
-    % estimates_sigma : float
+    % sigma_estimates : float
     %     posterior estimate for sigma
     %
-    % estimates_phi : matrix of size (q,3)
+    % phi_estimates : matrix of size (q,3)
     %     posterior estimates for phi
     %     column 1: interval lower bound; column 2: median; 
     %     column 3: interval upper bound
@@ -194,19 +194,19 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
     % mcmc_forecasts : matrix of size (m, iterations)
     %     storage of mcmc values for forecasts
     %
-    % estimates_forecasts : matrix of size (m,3)
-    %     posterior estimates for predictions   
-    %     column 1: interval lower bound; column 2: median; 
+    % forecast_estimates : matrix of size (m,3)
+    %     estimates for predictions   
+    %     column 1: point estimate; column 2: interval lower bound; 
     %     column 3: interval upper bound
     % 
-    % estimates_fit : vector of size (n,1)
+    % fitted_estimates : vector of size (n,1)
     %     posterior estimates (median) for in sample-fit
     %
-    % estimates_residuals : vector of size (n,1)
+    % residual_estimates : vector of size (n,1)
     %     posterior estimates (median) for residuals
     %
     % insample_evaluation : structure
-    %     in-sample fit evaluation (SSR, R2, adj-R2)
+    %     in-sample fit evaluation (SSR, R2, ...)
     %
     % forecast_evaluation_criteria : structure
     %     out-of-sample forecast evaluation (RMSE, MAE, ...)
@@ -244,8 +244,6 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
         V_trend
         b_quadratic_trend
         V_quadratic_trend
-        b
-        V
         alpha
         delta
         p
@@ -259,24 +257,19 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
         mcmc_beta
         mcmc_sigma
         mcmc_phi
-        estimates_beta
-        estimates_sigma
-        estimates_phi
+        beta_estimates
+        sigma_estimates
+        phi_estimates
         X_hat
         m
         mcmc_forecasts
-        estimates_forecasts
-        estimates_fit
-        estimates_residuals 
-        insample_evaluation
+        forecast_estimates
         forecast_evaluation_criteria
         m_y
     end      
     
     
     properties (GetAccess = private, SetAccess = private)
-        inv_V
-        inv_V_b
         inv_H
         inv_H_p
     end      
@@ -363,7 +356,8 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
             self.credibility_level = parser.Results.credibility_level;
             self.verbose = parser.Results.verbose;        
             % make regressors
-            self.make_regressors();            
+            self.make_regressors();   
+            self.make_autocorrelated_regressors();
         end
     
     
@@ -380,6 +374,8 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
 
             % define prior values
             self.prior();
+            % define autocorrelated prior values
+            self.autocorrelated_prior();
             % define posterior values
             self.posterior();
             % run MCMC algorithm for regression parameters
@@ -389,9 +385,9 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
         end  
         
         
-        function [estimates_forecasts] = forecast(self, X_hat, credibility_level, varargin)
+        function [forecast_estimates] = forecast(self, X_hat, credibility_level, varargin)
             
-            % [estimates_forecasts] = forecast(X_hat, credibility_level, varargin)
+            % [forecast_estimates] = forecast(self, X_hat, credibility_level, varargin)
             % predictions for the linear regression model using algorithm 10.3
             %
             % parameters:
@@ -401,7 +397,7 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
             %     credibility level for predictions (between 0 and 1)
             %
             % returns:
-            % estimates_forecasts : matrix of size (m,3)
+            % forecast_estimates : matrix of size (m,3)
             %     posterior estimates for predictions
             %     column 1: interval lower bound; column 2: median; 
             %     column 3: interval upper bound
@@ -409,52 +405,15 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
             % run mcmc algorithm for predictive density
             [mcmc_forecasts, m] = self.forecast_mcmc(X_hat);
             % obtain posterior estimates
-            estimates_forecasts = self.forecast_estimates(mcmc_forecasts, credibility_level);
+            forecast_estimates = self.make_forecast_estimates(mcmc_forecasts, credibility_level);
             % save as attributes
             self.X_hat = X_hat;
             self.m = m;
             self.mcmc_forecasts = mcmc_forecasts;
-            self.estimates_forecasts = estimates_forecasts;
+            self.forecast_estimates = forecast_estimates;
         end
         
-        
-        function fit_and_residuals(self)
-            
-            % fit_and_residuals()
-            % estimates of in-sample fit and regression residuals
-            %
-            % parameters:
-            % none
-            %
-            % returns:
-            % none
 
-            % unpack
-            y = self.y;
-            X = self.X;
-            beta = self.estimates_beta(:,2);
-            k = self.k;
-            T = self.T;            
-            % get fit and residual estimates
-            estimates_fit = X * beta;
-            estimates_residuals = y - X * beta;
-            % estimate in-sample prediction criteria from equation (3.10.8)
-            res = estimates_residuals;
-            ssr = res' * res;
-            tss = (y - mean(y))' * (y - mean(y));
-            r2 = 1 - ssr / tss;
-            adj_r2 = 1 - (1 - r2) * (T - 1) / (T - k);
-            insample_evaluation = struct;            
-            insample_evaluation.ssr = ssr;
-            insample_evaluation.r2 = r2;
-            insample_evaluation.adj_r2 = adj_r2;
-            % save as attributes            
-            self.estimates_fit = estimates_fit;
-            self.estimates_residuals = estimates_residuals;
-            self.insample_evaluation = insample_evaluation;
-        end
-        
-        
         function forecast_evaluation(self, y)
             
             % forecast_evaluation(y)
@@ -469,52 +428,20 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
             
             % unpack
             mcmc_forecasts = self.mcmc_forecasts;
-            estimates_forecasts = self.estimates_forecasts;
+            forecast_estimates = self.forecast_estimates;
             m = self.m;
             iterations = self.iterations;
-            % calculate forecast error
-            y_hat = estimates_forecasts(:,2);
-            err = y - y_hat;
-            % compute forecast evaluation from equation (3.10.11)
-            rmse = sqrt(err' * err / m);
-            mae = sum(abs(err)) / m;
-            mape = 100 * sum(abs(err ./ y)) / m;
-            theil_u = sqrt(err' * err) / (sqrt(y' * y) + sqrt(y_hat' * y_hat));
-            bias = sum(err) / sum(abs(err));
-            % loop over the m predictions
-            log_score = zeros(m,1);
-            crps = zeros(m,1);
-            for i = 1:m
-                % get actual, prediction mean, prediction variance
-                y_i = y(i);
-                forecasts = mcmc_forecasts(i,:);
-                mu_i = mean(forecasts);
-                sigma_i = var(forecasts);
-                % get log score from equation (3.10.14)
-                [log_pdf, ~] = su.normal_pdf(y_i, mu_i, sigma_i);
-                log_score(i) = - log_pdf;
-                % get CRPS from equation (3.10.17)
-                term_1 = sum(abs(forecasts - y_i));
-                term_2 = 0;
-                for j = 1:iterations
-                    term_2 = term_2 + sum(abs(forecasts(j) - forecasts));
-                end
-                crps(i) = term_1 / iterations - term_2 / (2 * iterations^2);
-            end
-            log_score = mean(log_score);
-            crps = mean(crps);
-            forecast_evaluation_criteria = struct;  
-            forecast_evaluation_criteria.rmse = rmse;
-            forecast_evaluation_criteria.mae = mae;
-            forecast_evaluation_criteria.mape = mape;
-            forecast_evaluation_criteria.theil_u = theil_u;
-            forecast_evaluation_criteria.bias = bias;
-            forecast_evaluation_criteria.log_score = log_score;
-            forecast_evaluation_criteria.crps = crps;
+            % obtain regular forecast evaluation criteria
+            y_hat = forecast_estimates(:,1);
+            standard_evaluation_criteria = ru.forecast_evaluation_criteria(y_hat, y);
+            % obtain Bayesian forecast evaluation criteria
+            bayesian_evaluation_criteria = self.bayesian_forecast_evaluation_criteria(y, mcmc_forecasts, iterations, m);
+            % merge structures
+            forecast_evaluation_criteria = iu.concatenate_structures(standard_evaluation_criteria, bayesian_evaluation_criteria);
             % save as attributes
             self.forecast_evaluation_criteria = forecast_evaluation_criteria;
         end
-        
+
         
         function [m_y] = marginal_likelihood(self)
 
@@ -600,13 +527,11 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
     
     methods (Access = protected, Hidden = true)     
 
-        
-        function make_regressors(self)
+
+        function make_autocorrelated_regressors(self)
             
             % generates T defined in (3.9.52)
 
-            % run superclass function
-            make_regressors@LinearRegression(self);
             % unpack
             n = self.n;
             q = self.q;
@@ -615,100 +540,17 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
             % save as attributes
             self.T = T;
         end           
-        
-        
-        function prior(self)
+   
+
+        function autocorrelated_prior(self)
             
             % creates prior elements b, V, p and Z defined in (3.9.10) and (3.9.62)
 
-            % generate b
-            self.generate_b();
-            % generate V
-            self.generate_V();
             % generate p
             self.generate_p();
             % generate H
             self.generate_H();
         end
-        
-        
-        function generate_b(self)
-        
-            % creates prior element b
-        
-            % unpack
-            exogenous = self.exogenous;            
-            constant = self.constant;
-            trend = self.trend;
-            quadratic_trend = self.quadratic_trend;
-            b_exogenous = self.b_exogenous;
-            b_constant = self.b_constant;
-            b_trend = self.b_trend;
-            b_quadratic_trend = self.b_quadratic_trend;
-            n_exogenous = self.n_exogenous;           
-            % if b_exogenous is a scalar, turn it into a vector replicating the value
-            if isscalar(b_exogenous)
-                b_exogenous = b_exogenous * ones(n_exogenous, 1);
-            end
-            b = b_exogenous;
-            % if quadratic trend is included, add to prior mean
-            if quadratic_trend
-                b = [b_quadratic_trend; b];
-            end
-            % if trend is included, add to prior mean
-            if trend
-                b = [b_trend; b];
-            end
-            % if constant is included, add to prior mean
-            if constant
-                b = [b_constant; b];
-            end
-            % save as attribute
-            self.b = b;
-        end    
-        
-        
-        function generate_V(self)
-            
-            % creates prior element V
-
-            % unpack
-            exogenous = self.exogenous;
-            b = self.b;            
-            constant = self.constant;
-            trend = self.trend;
-            quadratic_trend = self.quadratic_trend;
-            V_exogenous = self.V_exogenous;
-            V_constant = self.V_constant;
-            V_trend = self.V_trend;
-            V_quadratic_trend = self.V_quadratic_trend;
-            n_exogenous = self.n_exogenous;
-            % if V_exogenous is a scalar, turn it into a vector replicating the value
-            if isscalar(V_exogenous)
-                V_exogenous = V_exogenous * ones(n_exogenous, 1);
-            end
-            V = V_exogenous;
-            % if quadratic trend is included, add to prior mean
-            if quadratic_trend
-                V = [V_quadratic_trend; V];
-            end
-            % if trend is included, add to prior mean
-            if trend
-                V = [V_trend; V];
-            end
-            % if constant is included, add to prior mean
-            if constant
-                V = [V_constant; V];
-            end
-            % convert the vector V into an array
-            inv_V_b = b ./ V;
-            inv_V = diag(1 ./ V);
-            V = diag(V);
-            % save as attributes
-            self.V = V;
-            self.inv_V = inv_V;
-            self.inv_V_b = inv_V_b;
-        end      
         
         
         function generate_p(self)
@@ -831,7 +673,7 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
             % posterior b_bar
             b_bar_temp = inv_V_b + inv_sigma * X_star' * y_star;
             % efficient sampling of beta (algorithm 9.4)
-            beta = rng.efficient_multivariate_normal(b_bar_temp, inv_V_bar);
+            beta = rn.efficient_multivariate_normal(b_bar_temp, inv_V_bar);
             % compute residuals, as defined in (3.9.53) and (3.9.57)
             res = y - X * beta;
             res_star = y_star - X_star * beta;
@@ -845,7 +687,7 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
             % compute delta_bar, defined in (3.9.67)
             delta_bar = delta + res_star' * res_star;
             % sample sigma
-            sigma = rng.inverse_gamma(alpha_bar / 2, delta_bar / 2);
+            sigma = rn.inverse_gamma(alpha_bar / 2, delta_bar / 2);
             inv_sigma = 1 / sigma;
         end        
         
@@ -861,7 +703,7 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
             % posterior p_bar
             p_bar_temp = inv_H_p + inv_sigma * E' * epsilon;
             % efficient sampling of phi (algorithm 9.4)
-            phi = rng.efficient_multivariate_normal(p_bar_temp, inv_H_bar);
+            phi = rn.efficient_multivariate_normal(p_bar_temp, inv_H_bar);
             % update X_star and Y_star
             X_star = la.lag_polynomial(X, phi);
             y_star = la.lag_polynomial(y, phi);             
@@ -881,27 +723,27 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
             k = self.k;
             q = self.q;
             % initiate storage: 4 columns: lower bound, median, upper bound, standard deviation
-            estimates_beta = zeros(k,4);
+            beta_estimates = zeros(k,4);
             % fill estimates
-            estimates_beta(:,1) = quantile(mcmc_beta, (1-credibility_level)/2, 2);
-            estimates_beta(:,2) = quantile(mcmc_beta, 0.5, 2);
-            estimates_beta(:,3) = quantile(mcmc_beta, (1+credibility_level)/2, 2);
-            estimates_beta(:,4) = std(mcmc_beta, 0, 2);
+            beta_estimates(:,1) = quantile(mcmc_beta, 0.5, 2);
+            beta_estimates(:,2) = quantile(mcmc_beta, (1-credibility_level)/2, 2);
+            beta_estimates(:,3) = quantile(mcmc_beta, (1+credibility_level)/2, 2);
+            beta_estimates(:,4) = std(mcmc_beta, 0, 2);
             % get point estimate for sigma
-            estimates_sigma = quantile(mcmc_sigma, 0.5);
+            sigma_estimates = quantile(mcmc_sigma, 0.5);
             % get point estimate for phi
-            estimates_phi = zeros(q,4);
-            estimates_phi(:,1) = quantile(mcmc_phi, (1-credibility_level)/2, 2);
-            estimates_phi(:,2) = quantile(mcmc_phi, 0.5, 2);
-            estimates_phi(:,3) = quantile(mcmc_phi, (1+credibility_level)/2, 2);
-            estimates_phi(:,4) = std(mcmc_phi, 0, 2);
+            phi_estimates = zeros(q,4);
+            phi_estimates(:,1) = quantile(mcmc_phi, 0.5, 2);
+            phi_estimates(:,2) = quantile(mcmc_phi, (1-credibility_level)/2, 2);
+            phi_estimates(:,3) = quantile(mcmc_phi, (1+credibility_level)/2, 2);
+            phi_estimates(:,4) = std(mcmc_phi, 0, 2);
             % save as attributes
-            self.estimates_beta = estimates_beta;
-            self.estimates_sigma = estimates_sigma;
-            self.estimates_phi = estimates_phi;
+            self.beta_estimates = beta_estimates;
+            self.sigma_estimates = sigma_estimates;
+            self.phi_estimates = phi_estimates;
         end
-        
-        
+
+
         function [mcmc_forecasts, m] = forecast_mcmc(self, X_hat)
         
             % posterior predictive distribution from algorithm 10.3
@@ -915,9 +757,13 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
             mcmc_phi = self.mcmc_phi;
             iterations = self.iterations;
             verbose = self.verbose;
+            n = self.n;
+            constant = self.constant;
+            trend = self.trend;
+            quadratic_trend = self.quadratic_trend;            
             % add constant if necessary
             m = size(X_hat, 1);
-            X_hat = self.add_intercept_and_trends(X_hat, false);
+            X_hat = ru.add_intercept_and_trends(X_hat, constant, trend, quadratic_trend, n);
             % initiate storage, loop over simulations and simulate predictions
             mcmc_forecasts = zeros(m, iterations);        
             for i = 1:iterations
@@ -947,19 +793,54 @@ classdef AutocorrelatedBayesianRegression < handle & LinearRegression
                 end
             end
         end
+
         
-        
-        function [estimates_forecasts] = forecast_estimates(self, mcmc_forecasts, credibility_level)
+        function [forecast_estimates] = make_forecast_estimates(self, mcmc_forecasts, credibility_level)
             
             % point estimates and credibility intervals for predictions
 
             m = size(mcmc_forecasts,1);
             % initiate estimate storage; 3 columns: lower bound, median, upper bound
-            estimates_forecasts = zeros(m, 3);
+            forecast_estimates = zeros(m, 3);
             % fill estimates
-            estimates_forecasts(:,1) = quantile(mcmc_forecasts, (1-credibility_level)/2, 2);
-            estimates_forecasts(:,2) = quantile(mcmc_forecasts, 0.5, 2);
-            estimates_forecasts(:,3) = quantile(mcmc_forecasts, (1+credibility_level)/2, 2);
+            forecast_estimates(:,1) = quantile(mcmc_forecasts, 0.5, 2);
+            forecast_estimates(:,2) = quantile(mcmc_forecasts, (1-credibility_level)/2, 2);
+            forecast_estimates(:,3) = quantile(mcmc_forecasts, (1+credibility_level)/2, 2);
         end
+
+
+        function [bayesian_forecast_evaluation_criteria] = bayesian_forecast_evaluation_criteria(self, y, mcmc_forecasts, iterations, m)
+            
+            % Bayesian forecast evaluation criteria from equations from equations (3.10.13) and (3.10.15)
+    
+            log_score = zeros(m,1);
+            crps = zeros(m,1);
+            for i = 1:m
+                % get actual, prediction mean, prediction variance
+                y_i = y(i);
+                forecasts = mcmc_forecasts(i,:);
+                mu_i = mean(forecasts);
+                sigma_i = var(forecasts);
+                % get log score from equation (3.10.14)
+                [log_pdf, ~] = su.normal_pdf(y_i, mu_i, sigma_i);
+                log_score(i) = - log_pdf;
+                % get CRPS from equation (3.10.17)
+                term_1 = sum(abs(forecasts - y_i));
+                term_2 = 0;
+                for j = 1:iterations
+                    term_2 = term_2 + sum(abs(forecasts(j) - forecasts));
+                end
+                crps(i) = term_1 / iterations - term_2 / (2 * iterations^2);
+            end
+            log_score = mean(log_score);
+            crps = mean(crps);  
+            bayesian_forecast_evaluation_criteria = struct;
+            bayesian_forecast_evaluation_criteria.log_score = log_score;
+            bayesian_forecast_evaluation_criteria.crps = crps;
+        end
+
+
     end
+
+    
 end    

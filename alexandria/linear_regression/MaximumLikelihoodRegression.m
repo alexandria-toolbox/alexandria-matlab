@@ -1,5 +1,6 @@
 classdef MaximumLikelihoodRegression < handle & LinearRegression
 
+
     % Maximum likelihood linear regression, developed in section 9.1
     % 
     % Parameters:
@@ -67,9 +68,9 @@ classdef MaximumLikelihoodRegression < handle & LinearRegression
     % sigma : float
     %     residual variance, defined in (3.9.1)
     % 
-    % estimates_beta : matrix of size (k,4)
+    % beta_estimates : matrix of size (k,4)
     %     estimates for beta
-    %     column 1: interval lower bound; column 2: point estimate; 
+    %     column 1: point estimate; column 2: interval lower bound; 
     %     column 3: interval upper bound; column 4: standard deviation
     %
     % X_hat : matrix of size (m,k)
@@ -78,15 +79,15 @@ classdef MaximumLikelihoodRegression < handle & LinearRegression
     % m : int
     %     number of predicted observations, defined in (3.10.1)
     %
-    % estimates_forecasts : matrix of size (m,3)
+    % forecast_estimates : matrix of size (m,3)
     %     estimates for predictions   
-    %     column 1: interval lower bound; column 2: point estimate; 
+    %     column 1: point estimate; column 2: interval lower bound; 
     %     column 3: interval upper bound
     % 
-    % estimates_fit : vector of size (n,1)
+    % fitted_estimates : vector of size (n,1)
     %     posterior estimates (median) for in sample-fit
     %
-    % estimates_residuals : vector of size (n,1)
+    % residual_estimates : vector of size (n,1)
     %     posterior estimates (median) for residuals
     %
     % insample_evaluation : structure
@@ -119,12 +120,12 @@ classdef MaximumLikelihoodRegression < handle & LinearRegression
         verbose
         beta
         sigma
-        estimates_beta
+        beta_estimates
         X_hat
         m
-        estimates_forecasts
-        estimates_fit
-        estimates_residuals
+        forecast_estimates
+        fitted_estimates
+        residual_estimates
         insample_evaluation
         forecast_evaluation_criteria
     end    
@@ -186,11 +187,29 @@ classdef MaximumLikelihoodRegression < handle & LinearRegression
             % obtain posterior estimates for regression parameters
             self.parameter_estimates();
         end        
-        
-        
-        function [estimates_forecasts] = forecast(self, X_hat, credibility_level)
+
+
+        function insample_fit(self)
             
-            % [estimates_forecasts] = forecast(X_hat, credibility_level)
+            % insample_fit()
+            % generates in-sample fit and residuals along with evaluation criteria
+            % 
+            % parameters:
+            % none
+            % 
+            % returns:
+            % none    
+    
+            % compute fitted and residuals
+            self.fitted_and_residual();
+            % compute in-sample criteria
+            self.insample_criteria();
+        end
+
+
+        function [forecast_estimates] = forecast(self, X_hat, credibility_level)
+            
+            % [forecast_estimates] = forecast(self, X_hat, credibility_level)
             % predictions for the linear regression model using (3.10.2)
             %
             % parameters:
@@ -212,8 +231,11 @@ classdef MaximumLikelihoodRegression < handle & LinearRegression
             sigma = self.sigma;
             n = self.n;
             k = self.k;
+            constant = self.constant;
+            trend = self.trend;
+            quadratic_trend = self.quadratic_trend;
             % add constant and trends if included
-            X_hat = self.add_intercept_and_trends(X_hat, false);
+            X_hat = ru.add_intercept_and_trends(X_hat, constant, trend, quadratic_trend, n);
             % obtain prediction location, scale and degrees of freedom from (3.10.2)
             m = size(X_hat,1);
             location = X_hat * beta;
@@ -227,61 +249,18 @@ classdef MaximumLikelihoodRegression < handle & LinearRegression
             df = n - k;
             Z = su.student_icdf((1 + credibility_level) / 2, df);
             % initiate estimate storage; 3 columns: lower bound, median, upper bound
-            estimates_forecasts = zeros(m, 3);   
+            forecast_estimates = zeros(m, 3);   
             % fill estimates
-            estimates_forecasts(:,1) = location - Z * s;
-            estimates_forecasts(:,2) = location;
-            estimates_forecasts(:,3) = location + Z * s;
+            forecast_estimates(:,1) = location;
+            forecast_estimates(:,2) = location - Z * s;
+            forecast_estimates(:,3) = location + Z * s;
             % save as attributes
             self.X_hat = X_hat;
             self.m = m;
-            self.estimates_forecasts = estimates_forecasts;
-        end        
-        
-        
-        function fit_and_residuals(self)
-            
-            % fit_and_residuals()
-            % estimates of in-sample fit and regression residuals
-            %
-            % parameters:
-            % none
-            %
-            % returns:
-            % none
+            self.forecast_estimates = forecast_estimates;
+        end  
 
-            % unpack
-            X = self.X;
-            y = self.y;
-            beta = self.beta;
-            sigma = self.sigma;
-            k = self.k;
-            n = self.n;
-            % estimate fits and residuals
-            estimates_fit = X * beta;
-            estimates_residuals = y - X * beta;
-            % estimate in-sample prediction criteria from equation (3.10.8)
-            res = estimates_residuals;
-            ssr = res' * res;
-            tss = (y - mean(y))' * (y - mean(y));
-            r2 = 1 - ssr / tss;
-            adj_r2 = 1 - (1 - r2) * (n - 1) / (n - k);
-            % additionally estimate AIC and BIC from equation (3.10.9)
-            aic = 2 * k / n + log(sigma);
-            bic = k * log(n) / n + log(sigma);
-            insample_evaluation = struct;            
-            insample_evaluation.ssr = ssr;
-            insample_evaluation.r2 = r2;
-            insample_evaluation.adj_r2 = adj_r2;
-            insample_evaluation.aic = aic;
-            insample_evaluation.bic = bic;
-            % save as attributes
-            self.estimates_fit = estimates_fit;
-            self.estimates_residuals = estimates_residuals;
-            self.insample_evaluation = insample_evaluation;
-        end
-        
-        
+
         function forecast_evaluation(self, y)
             
             % forecast_evaluation(y)
@@ -295,28 +274,15 @@ classdef MaximumLikelihoodRegression < handle & LinearRegression
             % none
             
             % unpack
-            estimates_forecasts = self.estimates_forecasts;
-            m = self.m;
-            % calculate forecast error
-            y_hat = estimates_forecasts(:,2);
-            err = y - y_hat;
-            % compute forecast evaluation from equation (3.10.11)
-            rmse = sqrt(err' * err / m);
-            mae = sum(abs(err)) / m;
-            mape = 100 * sum(abs(err ./ y)) / m;
-            theil_u = sqrt(err' * err) / (sqrt(y' * y) + sqrt(y_hat' * y_hat));
-            bias = sum(err) / sum(abs(err));
-            forecast_evaluation_criteria = struct;  
-            forecast_evaluation_criteria.rmse = rmse;
-            forecast_evaluation_criteria.mae = mae;
-            forecast_evaluation_criteria.mape = mape;
-            forecast_evaluation_criteria.theil_u = theil_u;
-            forecast_evaluation_criteria.bias = bias;
+            forecast_estimates = self.forecast_estimates;
+            % obtain regular forecast evaluation criteria
+            y_hat = forecast_estimates(:,1);
+            forecast_evaluation_criteria = ru.forecast_evaluation_criteria(y_hat, y);
             % save as attributes
             self.forecast_evaluation_criteria = forecast_evaluation_criteria;
         end
-            
-        
+
+
     end   
     
         
@@ -327,22 +293,15 @@ classdef MaximumLikelihoodRegression < handle & LinearRegression
             
             % estimates beta_hat and sigma_hat from (3.9.7)
 
-            % unpack        
-            y = self.y;
-            X = self.X;
-            XX = self.XX;
-            Xy = self.Xy;
-            n = self.n;
-            verbose = self.verbose;
             % estimate beta_hat and sigma_hat
-            [beta, sigma] = self.ols_regression(y, X, XX, Xy, n);
-            if verbose
+            [beta, sigma] = self.ols_regression();
+            if self.verbose
                 cu.progress_bar_complete('Model parameters:');
             end
             self.beta = beta;
             self.sigma = sigma;
         end
-        
+
         
         function parameter_estimates(self)
             
@@ -362,17 +321,36 @@ classdef MaximumLikelihoodRegression < handle & LinearRegression
             df = n - k;
             Z = su.student_icdf((1+credibility_level)/2, df);
             % initiate storage: 4 columns: lower bound, median, upper bound, standard deviation
-            estimates_beta = zeros(k,4);
+            beta_estimates = zeros(k,4);
             % fill estimates
-            estimates_beta(:,1) = beta - Z * s;
-            estimates_beta(:,2) = beta;
-            estimates_beta(:,3) = beta + Z * s;
-            estimates_beta(:,4) = sqrt(df / (df - 2)) * s;
+            beta_estimates(:,1) = beta;
+            beta_estimates(:,2) = beta - Z * s;
+            beta_estimates(:,3) = beta + Z * s;
+            beta_estimates(:,4) = sqrt(df / (df - 2)) * s;
             % save as attributes
-            self.estimates_beta = estimates_beta;
+            self.beta_estimates = beta_estimates;
         end
 
+
+        function fitted_and_residual(self)
+            
+            % in-sample fitted and residuals
         
+            [fitted residual] = ru.fitted_and_residual(self.y, self.X, self.beta_estimates(:,1));
+            self.fitted_estimates = fitted;
+            self.residual_estimates = residual;
+        end
+        
+        
+        function insample_criteria(self)
+            
+            % in-sample fit evaluation criteria
+        
+            insample_evaluation = ru.ml_insample_evaluation_criteria(self.y, self.residual_estimates, self.n, self.k, self.sigma);
+            self.insample_evaluation = insample_evaluation;
+        end
+
+
     end
     
     

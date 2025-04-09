@@ -79,7 +79,7 @@ classdef Tab4Interface < handle
 
             % application selection label
             self.t4_txt2 = uicontrol('style', 'text');
-            set(self.t4_txt2, 'unit', 'pixels', 'position', [30 515 200 30]);
+            set(self.t4_txt2, 'unit', 'pixels', 'position', [30 515 260 30]);
             set(self.t4_txt2, 'String', ' none');
             set(self.t4_txt2, 'HorizontalAlignment', 'left');
             set(self.t4_txt2, 'FontName', 'Serif');
@@ -537,11 +537,11 @@ classdef Tab4Interface < handle
             split_image_string = strings([n,3]);         
             for i=1:n
                 image = image_list(i);
-                % application is first part, before underscore
-                temp = split(image,'_');
+                % application is first part, before hyphen
+                temp = split(image,'-');
                 application = temp(1);
-                % variables and response are parts after underscore, removing png extentions
-                temp = extractAfter(image, "_");
+                % variables and response are parts after hyphen, removing png extentions
+                temp = extractAfter(image, "-");
                 variable_and_response = extractBefore(temp,'.png');
                 % variable is part before @, response part after @ (if any)
                 split_variable_and_response = split(variable_and_response, "@");              
@@ -560,7 +560,7 @@ classdef Tab4Interface < handle
             applications = unique(split_image_string(:,1));
             % reorganize applications so that they are in the right order
             sorted_applications = [];
-            possible_applications = ["fit", "residuals", "forecasts", ...
+            possible_applications = ["fit", "residuals", "shocks", "steady_state", "forecasts", ...
                                      "conditional_forecasts", "irf", "fevd", "hd"];
             for i=1:numel(possible_applications)
                 if any(contains(applications, possible_applications(i)))
@@ -789,7 +789,7 @@ classdef Tab4Interface < handle
             
         
         function set_application_label(self)
-            set(self.t4_txt2, 'String', [' ' convertStringsToChars(self.current_application)]);
+            set(self.t4_txt2, 'String', replace([' ' convertStringsToChars(self.current_application)], '_', ' '));
         end
             
             
@@ -854,7 +854,7 @@ classdef Tab4Interface < handle
         
         function update_image(self)
             image_name = [convertStringsToChars(self.current_application)...
-                          '_' convertStringsToChars(self.current_variable)];
+                          '-' convertStringsToChars(self.current_variable)];
             if self.current_response ~= 'none'
                 image_name = [image_name '@' convertStringsToChars(self.current_response)];
             end
@@ -862,11 +862,11 @@ classdef Tab4Interface < handle
             self.image_name = image_name;
             [img, map, alphachannel] = imread(fullfile(self.graphics_folder_path, image_name));
             image = imresize(img, [570 660]);
-            image_handle = imhandles(self.t4_img1);
+            image_handle = findobj(self.t4_img1,'Type','image');
             set(image_handle, 'CData', image);
         end
-        
-           
+
+
     end   
     
     

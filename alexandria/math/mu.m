@@ -31,6 +31,28 @@ classdef mu
             diff = log_x - log_x_bar;
             log_sum_x = log_x_bar + log(sum(exp(diff)));
         end
+        
+        
+        function [y] = log_multivariate_gamma(x, n)
+            
+            % log_multivariate_gamma(x, n)
+            % log of multivariate Gamme function
+            %
+            % parameters:
+            % x : float
+            %     argument of Gamma function
+            % n : int
+            %     dimension of function
+            %
+            % returns:
+            % y : float
+            %     log value returned by the multivariate gamma function
+            
+            y = (n * (n-1) / 4) * log(pi);
+            for j=1:n
+                y = y + gammaln(x + (1 - j) / 2);
+            end
+        end
      
     end
     

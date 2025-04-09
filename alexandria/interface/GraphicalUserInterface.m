@@ -1,5 +1,5 @@
 classdef GraphicalUserInterface < handle & DefaultInputInterface & Tab1Interface ...
-                                  & Tab2RegressionInterface ...
+                                  & Tab2RegressionInterface & Tab2VectorAutoregressionInterface...
                                   & Tab3Interface & Tab4Interface & Tab5Interface
     
 
@@ -18,6 +18,7 @@ classdef GraphicalUserInterface < handle & DefaultInputInterface & Tab1Interface
         user_inputs
         % properties for lazy creation of tabs 2
         created_tab_2_lr = false
+        created_tab_2_var = false
         % interface and tabs properties
         background_color
         backtabs_color
@@ -172,9 +173,19 @@ classdef GraphicalUserInterface < handle & DefaultInputInterface & Tab1Interface
                 end
                 % show tab 2 for linear regression
                 self.show_tab_2_lr();
+                % set current tab as tab 2, linear regression
+                self.current_tab = 'tab_2_lr';
+            % else, if tab2 is called for vector autoregression:
+            elseif self.user_inputs.tab_1.model == 2
+                % if tab 2 for vector autoregression does not exist, create it
+                if self.created_tab_2_var == false
+                    self.create_tab_2_var();
+                end
+                % show tab 2 for vector autoregression 
+                self.show_tab_2_var();
+                % set current tab as tab 2, vector autoregression 
+                self.current_tab = 'tab_2_var';
             end
-            % set current tab as tab 2, linear regression
-            self.current_tab = 'tab_2_lr';
             % update tab button color
             set(self.tab_pbt2, 'BackgroundColor', self.background_color);
         end         
@@ -213,6 +224,8 @@ classdef GraphicalUserInterface < handle & DefaultInputInterface & Tab1Interface
         function create_tab_2(self)
             if self.user_inputs.tab_1.model == 1
                 self.create_tab_2_lr();
+            elseif self.user_inputs.tab_1.model == 2
+                self.create_tab_2_var();
             end
         end
         
@@ -223,7 +236,10 @@ classdef GraphicalUserInterface < handle & DefaultInputInterface & Tab1Interface
                 self.hide_tab_1();
             % if current tab is tab 2 for regression, hide it
             elseif strcmp(self.current_tab, 'tab_2_lr')
-                self.hide_tab_2_lr();                
+                self.hide_tab_2_lr();  
+            % if current tab is tab 2 for vector autoregression, hide it
+            elseif strcmp(self.current_tab, 'tab_2_var')
+                self.hide_tab_2_var();                 
             % if current tab is tab 3, hide it
             elseif strcmp(self.current_tab, 'tab_3')
                 self.hide_tab_3();

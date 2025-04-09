@@ -1220,9 +1220,7 @@ classdef Tab2RegressionInterface < handle
                self.user_inputs.tab_2_lr.optimization_type = 2;          
            end
         end         
-
         
     end
 
- 
 end

@@ -55,7 +55,27 @@ classdef la
                 end
             end
         end
+
         
+        function [X_inverse] = invert_lower_triangular_matrix(X)
+    
+            % [X_inverse] = invert_lower_triangular_matrix(X)
+            % computes inverse of lower triangular matrix efficiently, by forward substitution
+            % 
+            % parameters:
+            % X : matrix of shape (n,n)
+            %     lower triangular matrix
+            % 
+            % returns:
+            % X_inverse : matrix of shape (n,n)
+            %     inverse of X
+
+            % dimension of G
+            dimension = size(X,1);
+            % invert it by back substitution
+            X_inverse = X \ eye(dimension);
+        end
+
         
         function [A_inverse] = invert_spd_matrix(A)
     
@@ -81,6 +101,25 @@ classdef la
         end
         
         
+        function [log_determinant_A] = determinant_spd_matrix(A)
+
+            % determinant_spd_matrix(A)
+            % produces the log determinant of A, where A is symmetric and positive definite
+            % based on properties m.15, m.25 and m.28
+            % 
+            % parameters:
+            % A : matrix of size (n,n)
+            %     invertible, symmetric and positive definite
+            % 
+            % returns:
+            % log_determinant_A : float
+            %     log determinant of A
+
+            G = la.cholesky_nspd(A);
+            log_determinant_A = 2 * sum(log(diag(G)));
+        end
+        
+
         function [indices] = lower_triangular_indices(dimension)
             
             % [indices] = lower_triangular_indices(dimension)
@@ -119,15 +158,17 @@ classdef la
         end
         
         
-        function [F, L] = triangular_factorization(X)
+        function [F, L] = triangular_factorization(X, varargin)
             
-            % [F, L] = triangular_factorization(X)
+            % [F, L] = triangular_factorization(X, varargin)
             % triangular factorization of spd matrix
             % based on property m.34
             %
             % parameters:
             % X : matrix of size (n,n) 
             %     matrix to factor (symmetric and positive definite)
+            % varargin : up to one additional input, bool
+            %     if true, assumes that spd matrix X is replaced by its Cholesky factor
             %
             % returns:
             % F : matrix of size (n,n) 
@@ -135,7 +176,11 @@ classdef la
             % L : matrix of size (n,1) 
             %     diagonal factor (only reports the diagonal)
 
-            G = la.cholesky_nspd(X);
+            if (isempty(varargin) || varargin{1} == false)
+                G = la.cholesky_nspd(X);
+            elseif varargin{1} == true
+                G = X;
+            end 
             diagonal = diag(G)';
             F = G ./ diagonal;
             L = diagonal.^2;
@@ -177,6 +222,35 @@ classdef la
             det = real(sum(log(1 + w)));
         end
         
+
+        function [X_present, X_lagged] = lag_matrix(X, lags)
+            
+            % calculates arrays of present and lagged values of X
+            % 
+            % parameters:
+            % X : matrix of size (n,k) or (n,1)
+            %     array to be lagged
+            % 
+            % lags : int
+            %     number of lags to apply
+            % 
+            % returns:
+            % X_present: matrix of size (n-lags,k) or (n-lags,1)
+            %     array containing present values
+            % 
+            % X_lagged: ndarray of shape (n-lags,k*lags) or (n-lags,lags)
+            %     array containing lagged values
+
+            % array of present values
+            X_present = X(lags+1:end,:);
+            % first lag
+            X_lagged = X(lags:end-1,:);
+            % concatenate remaining lags
+            for i=2:lags
+                X_lagged = [X_lagged X(lags+1-i:end-i,:)];
+            end
+        end
+        
         
         function [Y] = lag_polynomial(X, gamma)
             
@@ -206,35 +280,6 @@ classdef la
                 for i=1:lags
                     Y = Y - gamma(i) * Z(:,columns*(i-1)+1:columns*i);
                 end
-            end
-        end
-                
-        
-        function [X_present, X_lagged] = lag_matrix(X, lags)
-            
-            % calculates arrays of present and lagged values of X
-            % 
-            % parameters:
-            % X : matrix of size (n,k) or (n,1)
-            %     array to be lagged
-            % 
-            % lags : int
-            %     number of lags to apply
-            % 
-            % returns:
-            % X_present: matrix of size (n-lags,k) or (n-lags,1)
-            %     array containing present values
-            % 
-            % X_lagged: ndarray of shape (n-lags,k*lags) or (n-lags,lags)
-            %     array containing lagged values
-
-            % array of present values
-            X_present = X(lags+1:end,:);
-            % first lag
-            X_lagged = X(lags:end-1,:);
-            % concatenate remaining lags
-            for i=2:lags
-                X_lagged = [X_lagged X(lags+1-i:end-i,:)];
             end
         end
         

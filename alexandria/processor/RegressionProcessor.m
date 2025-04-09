@@ -1,7 +1,6 @@
 classdef RegressionProcessor < handle
 
     
-    
     properties (GetAccess = public, SetAccess= protected)
         regression_type
         iterations
@@ -122,7 +121,6 @@ classdef RegressionProcessor < handle
         
         function regression_data(self)
             % print loading message
-            
             if self.progress_bar
                 cu.print_message('Data loading:');
             end
@@ -137,8 +135,42 @@ classdef RegressionProcessor < handle
                 cu.print_message(['  — / —    [' repmat('=',1,33) ']  —  done']);
             end
         end
-        
-        
+
+    
+        function make_regression_information(self)
+            % get sample dates
+            self.results_information.dates = self.dates;       
+            % get heteroscedastic variables
+            if self.regression_type == 5
+                self.results_information.heteroscedastic_variables = self.Z_variables;
+            else
+                self.results_information.heteroscedastic_variables = [];
+            end
+            % get regression option: in-sample fit
+            self.results_information.insample_fit = self.insample_fit;
+            % get regression option: marginal likelihood
+            self.results_information.marginal_likelihood = self.marginal_likelihood;
+            % get regression option: hyperparameter optimization
+            self.results_information.hyperparameter_optimization = self.hyperparameter_optimization;
+            % get regression option: optimization type
+            if self.optimization_type == 1
+                self.results_information.optimization_type = 'simple';
+            elseif self.optimization_type == 2
+                self.results_information.optimization_type = 'full';
+            end
+        end
+
+    
+        function make_regression_graphics_information(self)
+            % get sample dates
+            self.graphics_information.dates = self.dates;
+            % get forecast dates
+            self.graphics_information.forecast_dates = self.forecast_dates;
+            % get actual data for forecast evaluation, if available
+            self.graphics_information.y_p = self.y_p;
+        end
+
+
     end  
     
     
@@ -698,10 +730,8 @@ classdef RegressionProcessor < handle
                 forecast_dates = [];                
             end
         end
- 
         
     end
-    
     
 end
         

@@ -22,6 +22,7 @@ classdef DefaultInputInterface < handle
             % sub structures for each of the three tabs taking user inputs
             user_inputs.tab_1 = struct;
             user_inputs.tab_2_lr = struct;
+            user_inputs.tab_2_var = struct;
             user_inputs.tab_3 = struct;
 
             % default values for tab 1
@@ -68,6 +69,37 @@ classdef DefaultInputInterface < handle
             user_inputs.tab_2_lr.hyperparameter_optimization = false;
             user_inputs.tab_2_lr.optimization_type = 1;
 
+            % default values for tab 2, vector autoregression
+            user_inputs.tab_2_var.var_type = 1; 
+            user_inputs.tab_2_var.iterations = '2000';
+            user_inputs.tab_2_var.burnin = '1000';
+            user_inputs.tab_2_var.model_credibility = '0.95';
+            user_inputs.tab_2_var.constant = true;
+            user_inputs.tab_2_var.trend = false;
+            user_inputs.tab_2_var.quadratic_trend = false;
+            user_inputs.tab_2_var.lags = '4';
+            user_inputs.tab_2_var.ar_coefficients = '0.9';
+            user_inputs.tab_2_var.pi1 = '0.1';
+            user_inputs.tab_2_var.pi2 = '0.5';
+            user_inputs.tab_2_var.pi3 = '1';
+            user_inputs.tab_2_var.pi4 = '100';
+            user_inputs.tab_2_var.pi5 = '1';
+            user_inputs.tab_2_var.pi6 = '0.1';
+            user_inputs.tab_2_var.pi7 = '0.1';
+            user_inputs.tab_2_var.proxy_variables = '';
+            user_inputs.tab_2_var.lamda = '0.2';
+            user_inputs.tab_2_var.proxy_prior = 1; 
+            user_inputs.tab_2_var.insample_fit = false; 
+            user_inputs.tab_2_var.constrained_coefficients = false; 
+            user_inputs.tab_2_var.sums_of_coefficients = false; 
+            user_inputs.tab_2_var.initial_observation = false; 
+            user_inputs.tab_2_var.long_run = false; 
+            user_inputs.tab_2_var.stationary = false; 
+            user_inputs.tab_2_var.marginal_likelihood = false; 
+            user_inputs.tab_2_var.hyperparameter_optimization = false; 
+            user_inputs.tab_2_var.coefficients_file = ''; 
+            user_inputs.tab_2_var.long_run_file = ''; 
+            
             % default values for tab 3
             user_inputs.tab_3.forecast = false;
             user_inputs.tab_3.conditional_forecast = false;
@@ -82,6 +114,7 @@ classdef DefaultInputInterface < handle
             user_inputs.tab_3.forecast_periods = '';
             user_inputs.tab_3.conditional_forecast_type = 1;
             user_inputs.tab_3.forecast_file = '';
+            user_inputs.tab_3.conditional_forecast_file = '';
             user_inputs.tab_3.forecast_evaluation = false;
             user_inputs.tab_3.irf_periods = '';
             user_inputs.tab_3.structural_identification = 1;
@@ -137,7 +170,7 @@ classdef DefaultInputInterface < handle
             set(self.t2_lr_cbx6, 'Value', self.user_inputs.tab_2_lr.marginal_likelihood);
             set(self.t2_lr_cbx7, 'Value', self.user_inputs.tab_2_lr.hyperparameter_optimization);
             set(self.t2_lr_bgr2, 'SelectedObject', self.t2_lr_rdb7);
-
+            
             % tab 3
             set(self.t3_bgr1, 'SelectedObject', self.t3_rdb2);
             set(self.t3_edt1, 'String', self.user_inputs.tab_3.forecast_credibility);
@@ -152,29 +185,17 @@ classdef DefaultInputInterface < handle
             set(self.t3_edt6, 'String', self.user_inputs.tab_3.forecast_periods);
             set(self.t3_mnu1, 'Value', self.user_inputs.tab_3.conditional_forecast_type);
             set(self.t3_edt7, 'String', self.user_inputs.tab_3.forecast_file);
+            set(self.t3_edt8, 'String', self.user_inputs.tab_3.conditional_forecast_file);
             set(self.t3_cbx1, 'Value', self.user_inputs.tab_3.forecast_evaluation);
-            set(self.t3_edt8, 'String', self.user_inputs.tab_3.irf_periods);
+            set(self.t3_edt9, 'String', self.user_inputs.tab_3.irf_periods);
             set(self.t3_mnu2, 'Value', self.user_inputs.tab_3.structural_identification);
-            set(self.t3_edt9, 'String', self.user_inputs.tab_3.structural_identification_file);
+            set(self.t3_edt10, 'String', self.user_inputs.tab_3.structural_identification_file);
+            
         end
-
 
     end
 
-    
 end
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

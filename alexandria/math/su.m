@@ -262,6 +262,35 @@ classdef su
         end
         
         
+        function [log_val val] = multivariate_normal_pdf(x, mu, Sigma)
+    
+            % [log_val val] = multivariate_normal_pdf(x, mu, Sigma)
+            % log-pdf and pdf for the multivariate normal distribution
+            % 
+            % parameters:
+            % x : matrix of size (n,1)
+            %     x value at which the pdf must be calculated
+            % mu : matrix of size (n,1)
+            %     n-dimensional mean vector
+            % Sigma : matrix of size (n,n)
+            %     variance-covariance matrix for the distribution
+            % 
+            % returns:
+            % log_val : float
+            %     log-density of normal distribution at x
+            % val : float
+            %     density of normal distribution at x
+
+            n = size(x,1);
+            term_1 = - 0.5 * n * log(2 * pi);
+            term_2 = - 0.5 * la.determinant_spd_matrix(Sigma);
+            term_3 = - 0.5 * (x - mu)' * la.invert_spd_matrix(Sigma) * (x - mu);
+            log_val = term_1 + term_2 + term_3;
+            val = exp(log_val);
+        end
+
+        
+        
     end
     
     

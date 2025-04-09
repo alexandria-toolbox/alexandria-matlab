@@ -1,4 +1,4 @@
-classdef RegressionResults < handle & Results
+classdef RegressionResults < handle
     
     
     %---------------------------------------------------
@@ -7,69 +7,6 @@ classdef RegressionResults < handle & Results
     
     
     properties (GetAccess = public, SetAccess = protected)
-        estimation_start
-        estimation_complete
-        endogenous
-        exogenous
-        frequency
-        start_date
-        end_date
-        project_path
-        data_file
-        progress_bar
-        create_graphics
-        save_results
-        regression_type
-        iterations
-        burnin
-        model_credibility
-        b
-        V
-        alpha
-        delta
-        g
-        Q
-        tau
-        thinning
-        thinning_frequency
-        Z_variables
-        q
-        p
-        H
-        constant
-        b_constant
-        V_constant
-        trend
-        b_trend
-        V_trend
-        quadratic_trend
-        b_quadratic_trend
-        V_quadratic_trend
-        insample_fit
-        marginal_likelihood
-        hyperparameter_optimization
-        optimization_type
-        forecast
-        forecast_credibility
-        forecast_file
-        forecast_evaluation
-        actual
-        insample_dates
-        forecast_dates
-        k
-        n
-        beta
-        sigma
-        h
-        gamma
-        phi
-        fitted
-        residuals
-        insample_evaluation
-        m_y
-        estimates_forecasts
-        forecast_evaluation_criteria
-        summary
     end    
 
     
@@ -81,568 +18,474 @@ classdef RegressionResults < handle & Results
     methods (Access = public)    
 
 
-        function self = RegressionResults()
-            % save estimation start time as attribute
-            self.estimation_start = now;
-            % display Alexandria header
-            self.print_alexandria_header();
-            % display Alexandria start message
-            self.print_start_message();           
+        function self = RegressionResults()           
         end
-        
-        
-        function result_summary(self, ip, lr)
-            % save estimation end time as attribute
-            self.estimation_complete = now;
-            % gather information from input processor
-            self.input_information(ip);
-            % then gather information from regression model
-            self.regression_information(lr);
-            % print completion message
-            self.print_completion_message();
-            % build the string list for result summary
-            self.generate_result_summary();
-            % print and save regression result summary
-            self.print_and_save_summary();
-        end
-        
-        
-        function settings_summary(self)
-            if self.save_results
-                % initiate string list
-                self.settings = [];
-                % add settings header
-                self.add_settings_header();
-                % add tab 1 settings
-                self.add_tab_1_settings();
-                % add tab 2 settings
-                self.add_tab_2_settings();
-                % add tab 3 settings
-                self.add_tab_3_settings();
-                % print and save regression result summary
-                self.save_settings();
-            end
-        end
-        
-        
-        function application_summary(self)
-            if self.save_results
-                % actual, fitted and residuals
-                if self.insample_fit
-                    self.save_fitted_and_residuals();
-                end
-                % forecasts
-                if self.forecast
-                    self.save_forecasts();
-                end
-            end
-        end
-        
+
 
     end
     
     
     methods (Access = protected, Hidden = true)
-        
-        
-        function input_information(self, ip)
-            % input processor information: endogenous
-            self.endogenous = ip.endogenous_variables;
-            % input processor information: exogenous
-            self.exogenous = ip.exogenous_variables;
-            % input processor information: data frequency
-            self.frequency = ip.frequency;
-            % input processor information: sample dates
-            self.start_date = ip.start_date; 
-            self.end_date = ip.end_date;
-            % input processor information: project folder
-            self.project_path = ip.project_path;
-            % input processor information: data file
-            self.data_file = ip.data_file;
-            % input processor information: progress bar
-            self.progress_bar = ip.progress_bar;
-            % input processor information: graphics and figures
-            self.create_graphics = ip.create_graphics;
-            % input processor information: save results
-            self.save_results = ip.save_results;
-            % input processor information: model
-            self.regression_type = ip.regression_type; 
-            % input processor information: iterations
-            self.iterations = ip.iterations;
-            % input processor information: burn-in
-            self.burnin = ip.burnin;
-            % input processor information: credibility level
-            self.model_credibility = ip.model_credibility;
-            % input processor information: hyperparameter b
-            self.b = ip.b;
-            % input processor information: hyperparameter V
-            self.V = ip.V;
-            % input processor information: hyperparameter alpha
-            self.alpha = ip.alpha;
-            % input processor information: hyperparameter delta
-            self.delta = ip.delta;
-            % input processor information: hyperparameter g
-            self.g = ip.g;
-            % input processor information: hyperparameter Q
-            self.Q = ip.Q;   
-            % input processor information: hyperparameter tau
-            self.tau = ip.tau;       
-            % input processor information: thinning
-            self.thinning = ip.thinning;
-            % input processor information: thinning frequency
-            self.thinning_frequency = ip.thinning_frequency;
-            % input processor information: Z regressors
-            self.Z_variables = ip.Z_variables;
-            % input processor information: q
-            self.q = ip.q;
-            % input processor information: p        
-            self.p = ip.p;
-            % input processor information: H
-            self.H = ip.H;
-            % input processor information: constant
-            self.constant = ip.constant;
-            % input processor information: b constant        
-            self.b_constant = ip.b_constant;
-            % input processor information: V constant        
-            self.V_constant = ip.V_constant;
-            % input processor information: trend
-            self.trend = ip.trend;
-            % input processor information: b trend        
-            self.b_trend = ip.b_trend;
-            % input processor information: V trend        
-            self.V_trend = ip.V_trend;
-            % input processor information: quadratic trend
-            self.quadratic_trend = ip.quadratic_trend;
-            % input processor information: b trend        
-            self.b_quadratic_trend = ip.b_quadratic_trend;
-            % input processor information: V trend        
-            self.V_quadratic_trend = ip.V_quadratic_trend;
-            % input processor information: in-sample fit
-            self.insample_fit = ip.insample_fit;
-            % input processor information: marginal likelihood
-            self.marginal_likelihood = ip.marginal_likelihood;
-            % input processor information: hyperparameter optimization
-            self.hyperparameter_optimization = ip.hyperparameter_optimization;
-            % input processor information: optimization type
-            self.optimization_type = ip.optimization_type;
-            % input processor information: forecasts
-            self.forecast = ip.forecast;
-            % input processor information: forecasts credibility level
-            self.forecast_credibility = ip.forecast_credibility;
-            % input processor information: forecast file      
-            self.forecast_file = ip.forecast_file;
-            % input processor information: forecast evaluation     
-            self.forecast_evaluation = ip.forecast_evaluation;
-            % input processor information: actual
-            self.actual = ip.endogenous;
-            % input processor information: in-sample dates
-            self.insample_dates = ip.dates;
-            % input processor information: forecast dates
-            self.forecast_dates = ip.forecast_dates;
-        end
-        
-        
-        function regression_information(self, lr)
-            % regression information: dimensions
-            self.k = lr.k;
-            if self.regression_type == 6
-                self.n = lr.T;
-            else
-                self.n = lr.n;
+
+
+        function complete_regression_information(self)
+            % endogenous and exogenous variables
+            if ~isfield(self.complementary_information, 'endogenous_variables')
+                self.complementary_information.endogenous_variables = ["y"];
             end
-            % regression information: coefficients
-            self.beta = lr.estimates_beta;
-            if self.regression_type == 1 || self.regression_type == 2
-                self.sigma = lr.sigma;
-            else
-                self.sigma = lr.estimates_sigma;
+            if ~isfield(self.complementary_information, 'exogenous_variables')
+                n_exo = size(self.model.exogenous,2);
+                self.complementary_information.exogenous_variables = "x"+(1:n_exo);
             end
-            if self.regression_type == 5
-                self.h = lr.h;
-                self.gamma = lr.estimates_gamma;
+            % sample dates
+            if ~isfield(self.complementary_information, 'dates')
+                n = self.model.n;
+                self.complementary_information.dates = string(1:n);
             end
-            if self.regression_type == 6
-                self.q = lr.q;
-                self.phi = lr.estimates_phi;
+            % heteroscedastic variables
+            model_type = self.complementary_information.model_type;
+            if model_type == 5 && ~isfield(self.complementary_information, 'heteroscedastic_variables')
+                self.complementary_information.heteroscedastic_variables = "z"+(1:size(self.model.Z,2));
             end
-            % regression information: in-sample evaluation
-            if self.insample_fit
-                self.fitted = lr.estimates_fit;
-                self.residuals = lr.estimates_residuals;
-                self.insample_evaluation = lr.insample_evaluation;
+            % regression options
+            if ~isfield(self.complementary_information, 'insample_fit')
+                self.complementary_information.insample_fit = '_';
             end
-            % regression information: marginal likelihood
-            if self.marginal_likelihood && self.regression_type ~= 1
-                self.m_y = lr.m_y;
+            if ~isfield(self.complementary_information, 'marginal_likelihood')
+                self.complementary_information.marginal_likelihood = '_';
             end
-            % regression information: forecasts
-            if self.forecast
-                self.estimates_forecasts = lr.estimates_forecasts;
+            if ~isfield(self.complementary_information, 'hyperparameter_optimization')
+                self.complementary_information.hyperparameter_optimization = '_';
             end
-            % regression information: forecast evaluation
-            if self.forecast && self.forecast_evaluation
-                self.forecast_evaluation_criteria = lr.forecast_evaluation_criteria;
+            if ~isfield(self.complementary_information, 'optimization_type')
+                self.complementary_information.optimization_type = '_';
             end
-        end
-        
-        
-        function generate_result_summary(self)
-            % initiate string list
-            self.summary = [];
-            % add model header, depending on regression type
-            self.add_model_header();
-            % add estimation header
-            self.add_estimation_header();
-            % add coefficient header
-            self.add_coefficient_header();
-            % add beta coefficients
-            self.add_beta_coefficients();
-            % add sigma coefficient
-            self.add_sigma_coefficient();
-            % add gamma coefficients, if relevant
-            self.add_gamma_coefficient();       
-            % add phi coefficients, if relevant
-            self.add_phi_coefficient();      
-            % add equal line for separation
-            self.add_equal_line();
-            % add in-sample evaluation criteria, if relevant
-            self.add_insample_evaluation();
-            % add forecast evaluation criteria, if relevant
-            self.add_forecast_evaluation();
         end
 
-        
-        function add_model_header(self)
-            if self.regression_type == 1
+
+        function add_regression_tab_2_inputs(self)
+            % initiate lines
+            lines = string([]);
+            % header for tab 2
+            lines = [lines;'Specification'];
+            lines = [lines;'-----------------'];
+            lines = [lines;' '];
+            % regression type
+            regression_type = self.complementary_information.model_type;
+            if regression_type == 1
                 model = 'Maximum Likelihood Regression';
-            elseif self.regression_type == 2
-                model = 'Simple Bayesian Regression';          
-            elseif self.regression_type == 3
+            elseif regression_type == 2
+                model = 'Simple Bayesian Regression';      
+            elseif regression_type == 3
                 model = 'Hierarchical Bayesian Regression';         
-            elseif self.regression_type == 4
+            elseif regression_type == 4
                 model = 'Independent Bayesian Regression';
-            elseif self.regression_type == 5
+            elseif regression_type == 5
                 model = 'Heteroscedastic Bayesian Regression';            
-            elseif self.regression_type == 6
+            elseif regression_type == 6
                 model = 'Autocorrelated Bayesian Regression';
             end
-            self.summary = [self.summary; cu.model_header(model)];
+            lines = [lines;'regression type: ' model];
+            % burn-in and iterations
+            if regression_type == 4 || regression_type == 5 || regression_type == 6
+                iterations = num2str(self.model.iterations);
+                burn = num2str(self.model.burn);
+                lines = [lines;'iterations: ' iterations];
+                lines = [lines;'burn-in: ' burn];
+            end
+            % credibility level
+            model_credibility = num2str(self.model.credibility_level);
+            lines = [lines;'credibility level: ' model_credibility];
+            % hyperparameters: b and V
+            if regression_type ~= 1
+                b = iu.array_to_char(self.model.b);
+                V = iu.array_to_char(diag(self.model.V));
+                lines = [lines;'b: ' b];
+                lines = [lines;'V: ' V];
+            end
+            % hyperparameters: alpha and delta
+            if regression_type ~= 1 && regression_type ~= 2
+                alpha = num2str(self.model.alpha);
+                delta = num2str(self.model.delta);
+                lines = [lines;'alpha: ' alpha];
+                lines = [lines;'delta: ' delta];
+            end
+            % hyperparameters: heteroscedastic regression
+            if regression_type == 5      
+                g = iu.array_to_char(self.model.g);
+                Q = iu.array_to_char(diag(self.model.Q));
+                tau = num2str(self.model.tau);
+                thinning = cu.bool_to_string(self.model.thinning);
+                thinning_frequency = num2str(self.model.thinning_frequency);
+                Z_variables = iu.array_to_char(self.complementary_information.heteroscedastic_variables);
+                lines = [lines;'g: ' g];
+                lines = [lines;'Q: ' Q];    
+                lines = [lines;'tau: ' tau];
+                lines = [lines;'thinning: ' thinning];
+                lines = [lines;'thinning frequency: ' thinning_frequency];
+                lines = [lines;'Z variables: ' Z_variables];
+            end
+            % hyperparameters: autocorrelated regression
+            if regression_type == 6     
+                q = num2str(self.model.q);
+                p = iu.array_to_char(self.model.p);
+                H = iu.array_to_char(diag(self.model.H));
+                lines = [lines;'q: ' q];
+                lines = [lines;'p: ' p];       
+                lines = [lines;'H: ' H]; 
+            end
+            % constant and constant prior  
+            constant = cu.bool_to_string(self.model.constant);         
+            lines = [lines;'constant: ' constant];
+            if regression_type ~= 1
+                b_constant = num2str(self.model.b_constant);
+                V_constant = num2str(self.model.V_constant); 
+                lines = [lines;'b (constant): ' b_constant];           
+                lines = [lines;'V (constant): ' V_constant];
+            end
+            % trend and trend prior  
+            trend = cu.bool_to_string(self.model.trend);              
+            lines = [lines;'trend: ' trend];
+            if regression_type ~= 1
+                b_trend = num2str(self.model.b_trend);
+                V_trend = num2str(self.model.V_trend); 
+                lines = [lines;'b (trend): ' b_trend];          
+                lines = [lines;'V (trend): ' V_trend]; 
+            end
+            % quadratic trend and quadratic trend prior  
+            quadratic_trend = cu.bool_to_string(self.model.quadratic_trend);            
+            lines = [lines;'quadratic trend: ' quadratic_trend];
+            if regression_type ~= 1
+                b_quadratic_trend = num2str(self.model.b_quadratic_trend);
+                V_quadratic_trend = num2str(self.model.V_quadratic_trend); 
+                lines = [lines;'b (quadratic trend): ' b_quadratic_trend];           
+                lines = [lines;'V (quadratic trend): ' V_quadratic_trend];
+            end
+            % in-sample fit
+            if islogical(self.complementary_information.insample_fit)
+                insample_fit = cu.bool_to_string(self.complementary_information.insample_fit);   
+            else
+                insample_fit = self.complementary_information.insample_fit;
+            end
+            lines = [lines;'in-sample fit: ' insample_fit];           
+            % marginal likelihood
+            if regression_type ~= 1
+                if islogical(self.complementary_information.marginal_likelihood)
+                    marginal_likelihood = cu.bool_to_string(self.complementary_information.marginal_likelihood);   
+                else
+                    marginal_likelihood = self.complementary_information.marginal_likelihood;
+                end
+                lines = [lines;'marginal likelihood: ' marginal_likelihood];
+            end
+            % hyperparameter optimization
+            if regression_type == 2 || regression_type == 3 
+                if islogical(self.complementary_information.hyperparameter_optimization)
+                    hyperparameter_optimization = cu.bool_to_string(self.complementary_information.hyperparameter_optimization);   
+                else
+                    hyperparameter_optimization = self.complementary_information.hyperparameter_optimization;
+                end
+                lines = [lines;'hyperparameter optimization: ' hyperparameter_optimization];
+                % optimization type
+                optimization_type = self.complementary_information.optimization_type;
+                lines = [lines;'optimization type: ' optimization_type];
+            end
+            lines = [lines;' '];
+            lines = [lines;' '];
+            self.input_summary = [self.input_summary;lines];
         end
-        
 
-        function add_estimation_header(self)
-            estimation_start = self.estimation_start;
-            estimation_complete = self.estimation_complete;
-            n = self.n;
-            endogenous = self.endogenous(1);
-            if self.frequency == 1
-                frequency = 'cross-sectional/undated';
-            elseif self.frequency == 2
-                frequency = 'annual';          
-            elseif self.frequency == 3
-                frequency = 'quarterly'; 
-            elseif self.frequency == 4
-                frequency = 'monthly';
-            elseif self.frequency == 5
-                frequency = 'weekly';
-            elseif self.frequency == 6
-                frequency = 'daily';
+
+        function add_regression_tab_3_inputs(self)
+            % initiate lines
+            lines = string([]);
+            % header for tab 1
+            lines = [lines;'Applications'];
+            lines = [lines;'---------'];
+            lines = [lines;' '];
+            % forecasts
+            if islogical(self.complementary_information.forecast)
+                forecast = cu.bool_to_string(self.complementary_information.forecast);
+            else
+                forecast = self.complementary_information.forecast;
             end
-            sample = [convertStringsToChars(self.start_date) ' ' ...
-                      convertStringsToChars(self.end_date)];
-            self.summary = [self.summary; cu.estimation_header(estimation_start, ...
-                            estimation_complete, n, endogenous, frequency, sample)];            
-            self.summary = [self.summary; cu.equal_dashed_line()];
+            lines = [lines;'forecast: ' forecast];
+            forecast_credibility = num2str(self.complementary_information.forecast_credibility);
+            lines = [lines;'credibility level, forecasts: ' forecast_credibility];
+            % forecast options
+            forecast_file = self.complementary_information.forecast_file;
+            lines = [lines;'forecast file: ' forecast_file];
+            if islogical(self.complementary_information.forecast_evaluation)
+                forecast_evaluation = cu.bool_to_string(self.complementary_information.forecast_evaluation);
+            else
+                forecast_evaluation = self.complementary_information.forecast_evaluation;
+            end
+            lines = [lines;'forecast evaluation: ' forecast_evaluation];
+            lines = [lines;' '];
+            lines = [lines;' '];
+            self.input_summary = [self.input_summary;lines];
         end
-        
 
-        function add_coefficient_header(self)     
-            self.summary = [self.summary; cu.coefficient_header(self.model_credibility)];
-        end        
-        
-        
-        function add_beta_coefficients(self)
-            lines = [cu.string_line('regression coefficients beta:')];
-            regressors = [];
-            if self.constant
-                regressors = [regressors "constant"];
+  
+        function make_regression_summary(self)
+            % initiate string list
+            self.estimation_summary = string([]);
+            % add model header
+            self.add_regression_header();    
+            % add estimation header
+            self.add_regression_estimation_header();
+            % add coefficient header
+            self.add_regression_coefficient_summary();
+            % add heteroscedastic coefficients, if relevant
+            self.add_heteroscedastic_coefficient(); 
+            % add autocorrelated coefficients, if relevant
+            self.add_autocorrelated_coefficient();         
+            % add sigma coefficient
+            self.add_sigma_coefficient();
+            % add in-sample evaluation criteria, if relevant
+            self.add_regression_insample_evaluation(); 
+            % add forecast evaluation criteria, if relevant
+            self.add_regression_forecast_evaluation();
+        end
+
+
+        function make_regression_application_summary(self)
+            % in-sample fit measures
+            self.make_regression_insample_fit_summary();
+            % forecasts
+            self.make_regression_forecast_summary();
+        end
+
+
+        function save_regression_application(self, path)
+            % save in-sample fit
+            self.save_regression_insample_fit_summary(path);
+            % save forecasts
+            self.save_regression_forecast_summary(path);
+        end
+
+
+        function add_regression_header(self)
+            % recover model name and create header
+            model_name = self.complementary_information.model_name;
+            self.estimation_summary = [self.estimation_summary;cu.model_header(model_name)];
+        end
+
+
+        function add_regression_estimation_header(self)
+            % initiate lines
+            lines = string([]);
+            % first row: dependent variable and frequency
+            endogenous_variables = convertStringsToChars(self.complementary_information.endogenous_variables(1));
+            frequency = self.complementary_information.frequency;
+            left_element = sprintf(['Dep. variable:' sprintf('%+24s', cu.shorten_string(endogenous_variables, 20))]);
+            right_element = sprintf(['Frequency:' sprintf('%+28s', frequency)]);
+            lines = [lines; [left_element '    ' right_element]];
+            % second row: estimation sample and estimation start
+            sample_start = self.complementary_information.sample_start;
+            sample_end = self.complementary_information.sample_end;
+            if numel(sample_start) == 0 || numel(sample_end) == 0
+                sample = '—';
+            else
+                sample = [sample_start '  ' sample_end];
             end
-            if self.trend
-                regressors = [regressors "trend"];
-            end            
-            if self.quadratic_trend
-                regressors = [regressors "quadratic_trend"];
+            estimation_start = self.complementary_information.estimation_start;
+            left_element = sprintf(['Sample:' sprintf('%+31s',sample)]);
+            right_element = sprintf(['Est. start:' sprintf('%+27s', estimation_start)]);
+            lines = [lines; [left_element '    ' right_element]];    
+            % third row: observations and estimation complete   
+            n = num2str(self.model.n);
+            estimation_end = self.complementary_information.estimation_end;
+            left_element = sprintf(['No. observations:' sprintf('%+21s', n)]);
+            right_element = sprintf(['Est. complete:' sprintf('%+24s', estimation_end)]);
+            lines = [lines; [left_element '    ' right_element]];    
+            % equal dashed line
+            lines = [lines;cu.equal_dashed_line()];
+            self.estimation_summary = [self.estimation_summary;lines];
+        end
+
+
+        function add_regression_coefficient_summary(self)
+            % initiate lines
+            lines = string([]);
+            % coefficients header
+            credibility_level = self.model.credibility_level;
+            lines = [lines;cu.coefficient_header(credibility_level)];
+            lines = [lines;cu.string_line('regression coefficients beta:')];
+            % coefficient summary, coefficient by coefficient
+            regressors = string([]);
+            if self.model.constant
+                regressors = [regressors 'constant'];
             end
-            regressors = [regressors self.exogenous];
-            for i = 1:self.k
+            if self.model.trend
+                regressors = [regressors 'trend'];
+            end
+            if self.model.quadratic_trend
+                regressors = [regressors 'quadratic trend'];
+            end
+            regressors = [regressors self.complementary_information.exogenous_variables];
+            for i=1:self.model.k
                 regressor = regressors(i);
-                coefficient = self.beta(i,2);
-                standard_deviation = self.beta(i,4);
-                lower_bound = self.beta(i,1);
-                upper_bound = self.beta(i,3);            
-                lines = [lines; cu.parameter_estimate_line(regressor, coefficient, ...
-                         standard_deviation, lower_bound, upper_bound)];
+                coefficient = self.model.beta_estimates(i,1);
+                standard_deviation = self.model.beta_estimates(i,4);
+                lower_bound = self.model.beta_estimates(i,2);
+                upper_bound = self.model.beta_estimates(i,3);
+                lines = [lines; cu.parameter_estimate_line(regressor, ...
+                        coefficient, standard_deviation, lower_bound, upper_bound)];
             end
-            self.summary = [self.summary;lines];
-        end          
-        
-        
+            lines = [lines;cu.hyphen_dashed_line()];
+            self.estimation_summary = [self.estimation_summary;lines];
+        end
+
+
+        function add_heteroscedastic_coefficient(self)    
+            model_type = self.complementary_information.model_type;
+            if model_type == 5
+                lines = string([]);
+                heteroscedastic_variables = self.complementary_information.heteroscedastic_variables;
+                gamma_estimates = self.model.gamma_estimates;
+                lines = [lines;cu.string_line('heteroscedastic coefficients gamma:')];
+                for i=1:self.model.h
+                    lines = [lines;cu.parameter_estimate_line(heteroscedastic_variables(i), ...
+                    gamma_estimates(i,1), gamma_estimates(i,4), gamma_estimates(i,2), gamma_estimates(i,3))];
+                end
+                lines = [lines;cu.hyphen_dashed_line()];
+                self.estimation_summary = [self.estimation_summary;lines];
+            end
+        end
+
+
+        function add_autocorrelated_coefficient(self)
+            model_type = self.complementary_information.model_type;
+            if model_type == 6
+                lines = string([]);
+                phi_estimates = self.model.phi_estimates;
+                lines = [lines;cu.string_line('autocorrelation coefficients phi:')];          
+                for i=1:self.model.q
+                    lines = [lines;cu.parameter_estimate_line(['resid[-' num2str(i) ']'], ...
+                    phi_estimates(i,1), phi_estimates(i,4), phi_estimates(i,2), phi_estimates(i,3))];
+                end
+                lines = [lines;cu.hyphen_dashed_line()];
+                self.estimation_summary = [self.estimation_summary;lines];
+            end
+        end
+   
+
         function add_sigma_coefficient(self)
-            lines = cu.hyphen_dashed_line();
-            lines = [lines; cu.string_line('residual variance sigma:')];
-            lines = [lines; ['resid' repmat(' ', 1, 20) ...
-                     cu.format_number(self.sigma) repmat(' ', 1, 45)]];
-            self.summary = [self.summary;lines];
-        end
-        
-        
-        function add_gamma_coefficient(self)
-            if self.regression_type == 5
-                lines = cu.hyphen_dashed_line();
-                lines = [lines; cu.string_line('heteroscedastic coefficients gamma:')];
-                for i = 1:self.h
-                    lines = [lines; cu.parameter_estimate_line( ...
-                            ['Z[' num2str(i) ']'], self.gamma(i,2), ...
-                            self.gamma(i,4), self.gamma(i,1),self.gamma(i,3))];
-                end
-                self.summary = [self.summary;lines];
+            % initiate lines
+            lines = string([]);
+            % coefficients header
+            lines = [lines;cu.string_line('residual variance sigma:')];
+            % coefficient summary
+            model_type = self.complementary_information.model_type;
+            if model_type == 1 || model_type == 2
+                sigma = self.model.sigma;
+            else
+                sigma = self.model.sigma_estimates;
             end
+            lines = [lines;['resid' repmat(' ', 1, 20) cu.format_number(sigma) repmat(' ', 1, 45)]];
+            lines = [lines;cu.equal_dashed_line()];
+            self.estimation_summary = [self.estimation_summary;lines];
         end
-        
-        
-        function add_phi_coefficient(self)
-            if self.regression_type == 6
-                lines = cu.hyphen_dashed_line();
-                lines = [lines; cu.string_line('autocorrelation coefficients phi:')];
-                for i = 1:self.q
-                    lines = [lines; cu.parameter_estimate_line( ...
-                            ['resid[-' num2str(i) ']'], self.phi(i,2), ...
-                            self.phi(i,4), self.phi(i,1),self.phi(i,3))];
-                end
-                self.summary = [self.summary;lines];
-            end
-        end        
-        
-        
-        function add_insample_evaluation(self)
-            if self.insample_fit
-                ssr = self.insample_evaluation.ssr;
-                r2 = self.insample_evaluation.r2;
-                adj_r2 = self.insample_evaluation.adj_r2;
-                if self.regression_type == 1
-                    aic = self.insample_evaluation.aic;
-                    bic = self.insample_evaluation.bic;
-                    m_y = [];
+
+
+        function add_regression_insample_evaluation(self)
+            % initiate lines
+            lines = string([]);
+            % check if in-sample evaluation has been conducted
+            if ~isempty(self.model.insample_evaluation)
+                ssr = self.model.insample_evaluation.ssr;
+                r2 = self.model.insample_evaluation.r2;
+                adj_r2 = self.model.insample_evaluation.adj_r2;
+                model_type = self.complementary_information.model_type;
+                if model_type == 1
+                    aic = self.model.insample_evaluation.aic;
+                    bic = self.model.insample_evaluation.bic;
                 else
                     aic = [];
                     bic = [];
-                    if self.marginal_likelihood
-                        m_y = self.m_y;
-                    else
-                        m_y = [];
-                    end
                 end
-                lines = cu.insample_evaluation_lines(ssr, r2, adj_r2, m_y, aic, bic);
-                self.summary = [self.summary;lines];
-                % add equal line for separation
-                self.add_equal_line();               
+                if isprop(self.model,'m_y') && ~isempty(self.model.m_y)
+                    m_y = self.model.m_y;
+                else
+                    m_y = [];
+                end
+                lines = [lines;[cu.insample_evaluation_lines(ssr, r2, adj_r2, m_y, aic, bic)]];
+                lines = [lines;cu.equal_dashed_line()];
+                self.estimation_summary = [self.estimation_summary;lines];
             end
-        end 
+        end
 
-        
-        function add_forecast_evaluation(self)
-            if self.forecast && self.forecast_evaluation
-                rmse = self.forecast_evaluation_criteria.rmse;
-                mae = self.forecast_evaluation_criteria.mae;
-                mape = self.forecast_evaluation_criteria.mape;
-                theil_u = self.forecast_evaluation_criteria.theil_u;
-                bias = self.forecast_evaluation_criteria.bias;
-                if self.regression_type ~= 1
-                    log_score = self.forecast_evaluation_criteria.log_score;
-                    crps = self.forecast_evaluation_criteria.crps;
+
+        function add_regression_forecast_evaluation(self)
+            % initiate lines
+            lines = string([]);
+            % check if forecast evaluation has been conducted
+            if ~isempty(self.model.forecast_evaluation_criteria)
+                rmse = self.model.forecast_evaluation_criteria.rmse;
+                mae = self.model.forecast_evaluation_criteria.mae;
+                mape = self.model.forecast_evaluation_criteria.mape;
+                theil_u = self.model.forecast_evaluation_criteria.theil_u;
+                bias = self.model.forecast_evaluation_criteria.bias;
+                model_type = self.complementary_information.model_type;
+                if model_type ~= 1
+                    log_score = self.model.forecast_evaluation_criteria.log_score;
+                    crps = self.model.forecast_evaluation_criteria.crps;
                 else
                     log_score = [];
                     crps = [];
                 end
-                lines = cu.forecast_evaluation_lines(rmse, mae, mape, theil_u, bias, log_score, crps);
-                self.summary = [self.summary;lines];
-                % add equal line for separation
-                self.add_equal_line();               
+                lines = [lines;cu.forecast_evaluation_lines(rmse, mae, mape, theil_u, bias, log_score, crps)];
+                lines = [lines;cu.equal_dashed_line()];
+                self.estimation_summary = [self.estimation_summary;lines];
             end
-        end        
-        
+        end
 
-        function add_equal_line(self)
-            self.summary = [self.summary; cu.equal_dashed_line()];
+
+        function make_regression_insample_fit_summary(self)
+            % run only if in-sample fit has been run
+            if ~isempty(self.model.fitted_estimates)
+                % create index, column labels and data
+                index = self.complementary_information.dates;
+                actual = self.model.endogenous;
+                fitted = self.model.fitted_estimates;
+                residuals = self.model.residual_estimates;
+                fitted_table = table(index, actual, fitted, residuals);
+                self.application_summary.insample_fit = fitted_table;
+            end
         end
-        
-        
-        function add_tab_2_settings(self)
-            % initiate lines
-            lines = [];
-            % header for tab 2
-            lines = [lines; "Specifications"];
-            lines = [lines; "-----------------"];            
-            lines = [lines; " "];              
-            % recover elements
-            regression_type = self.regression_type;
-            if regression_type == 1
-                model = 'Maximum Likelihood Regression';
-            elseif regression_type == 2
-                model = 'Simple Bayesian Regression';           
-            elseif regression_type == 3
-                model = 'Hierarchical Bayesian Regression';        
-            elseif regression_type == 4
-                model = 'Independent Bayesian Regression';  
-            elseif regression_type == 5
-                model = 'Heteroscedastic Bayesian Regression';              
-            elseif regression_type == 6
-                model = 'Autocorrelated Bayesian Regression';
-            end
-            iterations = num2str(self.iterations);
-            burnin = num2str(self.burnin);
-            model_credibility = num2str(self.model_credibility);
-            b = iu.array_to_char(self.b);
-            V = iu.array_to_char(self.V);
-            alpha = num2str(self.alpha);
-            delta = num2str(self.delta);
-            g = iu.array_to_char(self.g);
-            Q = iu.array_to_char(self.Q);
-            tau = num2str(self.tau);
-            thinning = cu.bool_to_string(self.thinning);
-            thinning_frequency = num2str(self.thinning_frequency);
-            Z_variables = iu.array_to_char(self.Z_variables);
-            q = num2str(self.q);
-            p = iu.array_to_char(self.p);
-            H = iu.array_to_char(self.H);
-            constant = self.constant;
-            constant_string = cu.bool_to_string(constant);
-            b_constant = num2str(self.b_constant);
-            V_constant = num2str(self.V_constant);
-            trend = self.trend;
-            trend_string = cu.bool_to_string(trend);      
-            b_trend = num2str(self.b_trend);  
-            V_trend = num2str(self.V_trend);
-            quadratic_trend = self.quadratic_trend;
-            quadratic_trend_string = cu.bool_to_string(quadratic_trend);      
-            b_quadratic_trend = num2str(self.b_quadratic_trend);       
-            V_quadratic_trend = num2str(self.V_quadratic_trend); 
-            insample_fit = cu.bool_to_string(self.insample_fit);
-            marginal_likelihood = cu.bool_to_string(self.marginal_likelihood);
-            hyperparameter_optimization = self.hyperparameter_optimization;
-            hyperparameter_optimization_string = cu.bool_to_string(hyperparameter_optimization);
-            optimization_type = num2str(self.optimization_type);
-            % other elements for tab 2
-            lines = [lines; ['regression type: ' model]];  
-            if regression_type == 4 || regression_type == 5 || regression_type == 6
-                lines = [lines; ['iterations: ' iterations]];  
-                lines = [lines; ['burn-in: ' burnin]];
-            end
-            lines = [lines; ['credibility level: ' model_credibility]];
-            if regression_type ~= 1
-                lines = [lines; ['b: ' b]];
-                lines = [lines; ['V: ' V]];
-            end
-            if regression_type ~= 1 && regression_type ~= 2
-                lines = [lines; ['alpha: ' alpha]];
-                lines = [lines; ['delta: ' delta]];
-            end
-            if regression_type == 5
-                lines = [lines; ['g: ' g]];
-                lines = [lines; ['Q: ' Q]];
-                lines = [lines; ['tau: ' tau]];
-                lines = [lines; ['thinning: ' thinning]];
-                lines = [lines; ['thinning frequency: ' thinning_frequency]];
-                lines = [lines; ['Z variables: ' Z_variables]];
-            end
-            if regression_type == 6
-                lines = [lines; ['q: ' q]];
-                lines = [lines; ['p: ' p]];
-                lines = [lines; ['H: ' H]];
-            end
-            lines = [lines; ['constant: ' constant_string]];
-            if constant && regression_type ~= 1  
-                lines = [lines; ['b (constant): ' b_constant]];
-                lines = [lines; ['V (constant): ' V_constant]];
-            end
-            lines = [lines; ['trend: ' trend_string]];
-            if trend && regression_type ~= 1
-                lines = [lines; ['b (trend): ' b_trend]];
-                lines = [lines; ['V (trend): ' V_trend]]; 
-            end
-            lines = [lines; ['quadratic trend: ' quadratic_trend_string]];
-            if quadratic_trend && regression_type ~= 1
-                lines = [lines; ['b (quadratic trend): ' b_quadratic_trend]];
-                lines = [lines; ['V (quadratic trend): ' V_quadratic_trend]];
-            end
-            lines = [lines; ['in-sample fit: ' insample_fit]];        
-            if regression_type ~= 1
-                lines = [lines; ['marginal likelihood: ' marginal_likelihood]];
-            end
-            if regression_type == 2 || regression_type == 3
-                lines = [lines; ['hyperparameter optimization: ' hyperparameter_optimization_string]];
-                if hyperparameter_optimization
-                    lines = [lines; ['optimization type: ' optimization_type]];
-                end
-            end
-            lines = [lines; ' ']; 
-            lines = [lines; ' '];
-            self.settings = [self.settings; lines];
-        end
-        
-        
-        function add_tab_3_settings(self)
-            % initiate lines
-            lines = [];         
-            % header for tab 3
-            lines = [lines; "Applications"];
-            lines = [lines; "-----------------"];            
-            lines = [lines; " "];         
-            % recover elements
-            forecast = self.forecast;
-            forecast_string = cu.bool_to_string(forecast);
-            forecast_credibility = num2str(self.forecast_credibility);
-            forecast_file = self.forecast_file;
-            forecast_evaluation = cu.bool_to_string(self.forecast_evaluation);
-            % other elements for tab 3
-            lines = [lines; ['forecast: ' forecast_string]];
-            if forecast
-                lines = [lines; ['forecast credibility: ' forecast_credibility]];
-                lines = [lines; ['forecast file: ' forecast_file]];
-                lines = [lines; ['forecast evaluation: ' forecast_evaluation]];
-            end
-            % other elements for tab 3
-            self.settings = [self.settings; lines];
-        end
-        
-        
-        function save_fitted_and_residuals(self)
+
+
+        function make_regression_forecast_summary(self)
+            % run only if forecast has been run
+            if ~isempty(self.model.forecast_estimates)       
             % create index, column labels and data
-            index = self.insample_dates;
-            actual = self.actual;
-            fitted = self.fitted;
-            residuals = self.residuals;
-            fitted_table = table(index, actual, fitted, residuals);
-            % create path to file and save
-            fitted_file_path = fullfile(self.project_path, 'results', 'fitted_and_residuals.csv');
-            writetable(fitted_table, fitted_file_path);
+                index = (1:size(self.model.forecast_estimates,1))';
+                median = self.model.forecast_estimates(:,1);
+                lower_bound = self.model.forecast_estimates(:,2);
+                upper_bound = self.model.forecast_estimates(:,3);
+                forecast_table = table(index, median, lower_bound, upper_bound);
+                self.application_summary.forecast = forecast_table;
+            end
         end
-        
-        
-        function save_forecasts(self)
-            % create index, column labels and data
-            index = self.forecast_dates;
-            lower_bound = self.estimates_forecasts(:,1);
-            median = self.estimates_forecasts(:,2);
-            upper_bound = self.estimates_forecasts(:,3);
-            forecast_table = table(index, lower_bound, median, upper_bound);
-            % create path to file and save
-            forecast_file_path = fullfile(self.project_path, 'results', 'forecasts.csv');
-            writetable(forecast_table, forecast_file_path);
+
+
+        function save_regression_insample_fit_summary(self, path)
+            if isfield(self.application_summary,'insample_fit')
+                insample_fit_summary = self.application_summary.insample_fit;
+                full_path = fullfile(path, 'insample_fit.csv'); 
+                writetable(insample_fit_summary, full_path);
+            end
         end
-          
+                
+    
+        function save_regression_forecast_summary(self, path)
+            if isfield(self.application_summary,'forecast')
+                forecast_summary = self.application_summary.forecast;
+                full_path = fullfile(path, 'forecast.csv');
+                writetable(forecast_summary, full_path);
+            end
+        end
 
     end
-    
 
 end

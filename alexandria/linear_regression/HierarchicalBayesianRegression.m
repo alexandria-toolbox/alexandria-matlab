@@ -1,5 +1,6 @@
-classdef HierarchicalBayesianRegression < handle & LinearRegression
+classdef HierarchicalBayesianRegression < handle & LinearRegression & BayesianRegression
     
+
     % Hierarchical Bayesian linear regression, developed in section 9.3
     % 
     % Parameters:
@@ -108,6 +109,12 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
     %
     % delta : float
     %     prior scale, defined in (3.9.21)
+    %
+    % hyperparameter_optimization : bool
+    %     if true, performs hyperparameter optimization by marginal likelihood
+    %    
+    % optimization_type : int, 1 or 2
+    %     if 1, simple optimization (scalar v); if 2, full optimization (vector V)  
     % 
     % credibility_level : float
     %     credibility level (between 0 and 1)
@@ -148,12 +155,12 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
     % df : float
     %     degrees of freedom for the student posterior of beta, defined in (3.9.28)
     %
-    % estimates_beta : matrix of size (k,4)
-    %     posterior estimates for beta
-    %     column 1: interval lower bound; column 2: median; 
+    % beta_estimates : matrix of size (k,4)
+    %     estimates for beta
+    %     column 1: point estimate; column 2: interval lower bound; 
     %     column 3: interval upper bound; column 4: standard deviation
     %
-    % estimates_sigma : float
+    % sigma_estimates : float
     %     posterior estimate for sigma
     %
     % X_hat : matrix of size (m,k)
@@ -162,19 +169,19 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
     % m : int
     %     number of predicted observations, defined in (3.10.1)
     %
-    % estimates_forecasts : matrix of size (m,3)
-    %     posterior estimates for predictions   
-    %     column 1: interval lower bound; column 2: median; 
+    % forecast_estimates : matrix of size (m,3)
+    %     estimates for predictions   
+    %     column 1: point estimate; column 2: interval lower bound; 
     %     column 3: interval upper bound
     % 
-    % estimates_fit : vector of size (n,1)
+    % fitted_estimates : vector of size (n,1)
     %     posterior estimates (median) for in sample-fit
     %
-    % estimates_residuals : vector of size (n,1)
+    % residual_estimates : vector of size (n,1)
     %     posterior estimates (median) for residuals
     %
     % insample_evaluation : structure
-    %     in-sample fit evaluation (SSR, R2, adj-R2)
+    %     in-sample fit evaluation (SSR, R2, ...)
     %
     % forecast_evaluation_criteria : structure
     %     out-of-sample forecast evaluation (RMSE, MAE, ...)
@@ -189,8 +196,7 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
     % forecast
     % fit_and_residuals
     % forecast_evaluation  
-    % marginal_likelihood
-    % optimize_hyperparameters  
+    % marginal_likelihood  
     
     
     %---------------------------------------------------
@@ -212,8 +218,6 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
         V_trend
         b_quadratic_trend
         V_quadratic_trend        
-        b
-        V
         alpha
         delta
         credibility_level
@@ -222,17 +226,16 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
         V_bar;
         alpha_bar
         delta_bar
+        hyperparameter_optimization
+        optimization_type
         location
         scale
         df
-        estimates_beta
-        estimates_sigma
+        beta_estimates
+        sigma_estimates
         X_hat
         m
-        estimates_forecasts
-        estimates_fit
-        estimates_residuals
-        insample_evaluation
+        forecast_estimates
         forecast_evaluation_criteria        
         m_y
     end    
@@ -240,8 +243,6 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
     
     properties (GetAccess = private, SetAccess = private)  
         sigma
-        inv_V
-        inv_V_b
         inv_V_bar
         forecast_location
         forecast_scale
@@ -276,6 +277,8 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
             default_V_quadratic_trend = 1;
             default_alpha = 1e-4;
             default_delta = 1e-4;
+            default_hyperparameter_optimization = false;
+            default_optimization_type = 1;
             default_credibility_level = 0.95;
             default_verbose = false;
             addRequired(parser,'endogenous');
@@ -293,6 +296,8 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
             addParameter(parser, 'V_quadratic_trend', default_V_quadratic_trend);
             addParameter(parser, 'alpha', default_alpha);
             addParameter(parser, 'delta', default_delta);
+            addParameter(parser, 'hyperparameter_optimization', default_hyperparameter_optimization); 
+            addParameter(parser, 'optimization_type', default_optimization_type);             
             addParameter(parser,'credibility_level', default_credibility_level);
             addParameter(parser,'verbose', default_verbose);
             parse(parser, endogenous, exogenous,varargin{:});
@@ -311,6 +316,8 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
             self.V_quadratic_trend = parser.Results.V_quadratic_trend;
             self.alpha = parser.Results.alpha;
             self.delta = parser.Results.delta;
+            self.hyperparameter_optimization = parser.Results.hyperparameter_optimization;  
+            self.optimization_type = parser.Results.optimization_type;  
             self.credibility_level = parser.Results.credibility_level;
             self.verbose = parser.Results.verbose;
             % make regressors
@@ -329,6 +336,8 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
             % returns:
             % none
 
+            % optimize hyperparameters, if applicable
+            self.optimize_hyperparameters();
             % define prior values
             self.prior();
             % define posterior values
@@ -338,9 +347,9 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
         end
         
         
-        function [estimates_forecasts] = forecast(self, X_hat, credibility_level)
+        function [forecast_estimates] = forecast(self, X_hat, credibility_level)
             
-            % [estimates_forecasts] = forecast(X_hat, credibility_level)
+            % [forecast_estimates] = forecast(self, X_hat, credibility_level)
             % predictions for the linear regression model using (3.10.6)
             %
             % parameters:
@@ -362,8 +371,13 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
             V_bar = self.V_bar;
             alpha_bar = self.alpha_bar;
             delta_bar = self.delta_bar;
+            n = self.n;
+            k = self.k;
+            constant = self.constant;
+            trend = self.trend;
+            quadratic_trend = self.quadratic_trend;
             % add constant and trends if included
-            X_hat = self.add_intercept_and_trends(X_hat, false);
+            X_hat = ru.add_intercept_and_trends(X_hat, constant, trend, quadratic_trend, n);
             % obtain prediction location, scale and degrees of freedom from (3.10.6)
             m = size(X_hat, 1);
             location = X_hat * b_bar;
@@ -374,61 +388,24 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
                 cu.progress_bar_complete('Predictions:')
             end
             % initiate estimate storage; 3 columns: lower bound, median, upper bound
-            estimates_forecasts = zeros(m, 3);
+            forecast_estimates = zeros(m, 3);
             % critical value of Student distribution for credibility level
             Z = su.student_icdf((1 + credibility_level) / 2, df);
             % scale in textbook is square of scale for Python: take square root
             sqrt_scale = sqrt(diag(scale));
             % fill estimates
-            estimates_forecasts(:,1) = location - Z * sqrt_scale;
-            estimates_forecasts(:,2) = location;
-            estimates_forecasts(:,3) = location + Z * sqrt_scale;
+            forecast_estimates(:,1) = location;
+            forecast_estimates(:,2) = location - Z * sqrt_scale;
+            forecast_estimates(:,3) = location + Z * sqrt_scale;
             % save as attributes
             self.X_hat = X_hat;
             self.m = m;
             self.forecast_location = location;
             self.forecast_scale = scale;
-            self.estimates_forecasts = estimates_forecasts;
+            self.forecast_estimates = forecast_estimates;
         end
-        
-        
-        function fit_and_residuals(self)
-            
-            % fit_and_residuals()
-            % estimates of in-sample fit and regression residuals
-            %
-            % parameters:
-            % none
-            %
-            % returns:
-            % none
 
-            % unpack
-            y = self.y;
-            X = self.X;
-            beta = self.estimates_beta(:,2);
-            k = self.k;
-            n = self.n;            
-            % get fit and residual estimates
-            estimates_fit = X * beta;
-            estimates_residuals = y - X * beta;
-            % estimate in-sample prediction criteria from equation (3.10.8)
-            res = estimates_residuals;
-            ssr = res' * res;
-            tss = (y - mean(y))' * (y - mean(y));
-            r2 = 1 - ssr / tss;
-            adj_r2 = 1 - (1 - r2) * (n - 1) / (n - k);
-            insample_evaluation = struct;   
-            insample_evaluation.ssr = ssr;
-            insample_evaluation.r2 = r2;
-            insample_evaluation.adj_r2 = adj_r2;
-            % save as attributes            
-            self.estimates_fit = estimates_fit;
-            self.estimates_residuals = estimates_residuals;
-            self.insample_evaluation = insample_evaluation;
-        end
-        
-        
+
         function forecast_evaluation(self, y)
             
             % forecast_evaluation(y)
@@ -445,48 +422,15 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
             forecast_location = self.forecast_location;
             forecast_scale = self.forecast_scale;
             nu_i = self.alpha_bar;
-            estimates_forecasts = self.estimates_forecasts;
+            forecast_estimates = self.forecast_estimates;
             m = self.m;
-            % calculate forecast error
-            y_hat = estimates_forecasts(:,2);
-            err = y - y_hat;
-            % compute forecast evaluation from equation (3.10.11)
-            rmse = sqrt(err' * err / m);
-            mae = sum(abs(err)) / m;
-            mape = 100 * sum(abs(err ./ y)) / m;
-            theil_u = sqrt(err' * err) / (sqrt(y' * y) + sqrt(y_hat' * y_hat));
-            bias = sum(err) / sum(abs(err));
-            % loop over the m predictions
-            log_score = zeros(m,1);
-            crps = zeros(m,1);
-            for i = 1:m
-                % get actual, prediction mean, prediction variance
-                y_i = y(i);
-                mu_i = forecast_location(i);
-                sigma_i = forecast_scale(i,i);
-                % get log score from equation (3.10.13)
-                [log_pdf, ~] = su.student_pdf(y_i, mu_i, sigma_i, nu_i);
-                log_score(i) = - log_pdf;
-                % get CRPS from equation (3.10.16)
-                s_i = sqrt(sigma_i);
-                y_tld = (y_i - mu_i) / s_i;
-                [~, pdf] = su.student_pdf(y_tld, 0, 1, nu_i);
-                cdf = su.student_cdf(y_tld, 0, 1, nu_i);
-                term_1 = y_tld * (2 * cdf - 1);
-                term_2 = 2 * pdf * (nu_i + y_tld^2) / (nu_i - 1);
-                term_3 = - (2 * sqrt(nu_i) * beta(0.5, nu_i - 0.5)) / ((nu_i - 1) * beta(0.5, nu_i / 2)^2);
-                crps(i) = s_i * (term_1 + term_2 + term_3);
-            end
-            log_score = mean(log_score);
-            crps = mean(crps);
-            forecast_evaluation_criteria = struct;  
-            forecast_evaluation_criteria.rmse = rmse;
-            forecast_evaluation_criteria.mae = mae;
-            forecast_evaluation_criteria.mape = mape;
-            forecast_evaluation_criteria.theil_u = theil_u;
-            forecast_evaluation_criteria.bias = bias;
-            forecast_evaluation_criteria.log_score = log_score;
-            forecast_evaluation_criteria.crps = crps;
+            % obtain regular forecast evaluation criteria
+            y_hat = forecast_estimates(:,1);
+            standard_evaluation_criteria = ru.forecast_evaluation_criteria(y_hat, y);      
+            % obtain Bayesian forecast evaluation criteria
+            bayesian_evaluation_criteria = self.bayesian_forecast_evaluation_criteria(y, forecast_location, forecast_scale, nu_i, m);
+            % merge structures
+            forecast_evaluation_criteria = iu.concatenate_structures(standard_evaluation_criteria, bayesian_evaluation_criteria);
             % save as attributes
             self.forecast_evaluation_criteria = forecast_evaluation_criteria;
         end
@@ -524,165 +468,74 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
             self.m_y = m_y;
         end
         
-        
-        function optimize_hyperparameters(self, type)
-            
-            % optimize_hyperparameters(type)
-            % optimize V and delta by maximizing the marginal likelihood
-            %
-            % parameters
-            % type : int 
-            %     optimization type (1 or 2) 
-            %     1 = optimize scalar v; 2 = optimize vector V
-            
-            % unpack
-            constant = self.constant;
-            trend = self.trend;
-            quadratic_trend = self.quadratic_trend;            
-            verbose = self.verbose;
-            k = self.k;
-            % estimate prior elements to get proper estimate of b
-            self.prior();
-            % optimize: in the simplest case,  V = vI so only scalar v is optimized
-            if type == 1
-                % initial value of optimizer
-                x_0 = ones(2,1);
-                % bounds for parameter values
-                lower_bound = eps * ones(2, 1);
-                upper_bound = 1000 * ones(2, 1);
-                % optimize
-                [solution, fval, exitflag] = minimize(@self.negative_likelihood_simple_V, ...
-                                   [x_0], [], [], [], [], [lower_bound], [upper_bound]);
-                % generate V again and save as attribute
-                self.V_constant = solution(1,1);
-                self.V_trend = solution(1,1);
-                self.V_quadratic_trend = solution(1,1);
-                self.V_exogenous = solution(1,1);                
-                self.delta = solution(2,1);
-            % in the second case, V is diagonal from vector v, so vector v is optimized
-            elseif type == 2
-                % initial value of optimizer
-                x_0 = ones(k + 1, 1);
-                % bounds for parameter values
-                lower_bound = eps * ones(k + 1, 1);
-                upper_bound = 1000 * ones(k + 1, 1);
-                % optimize
-                [solution, fval, exitflag] = minimize(@self.negative_likelihood_full_V, ...
-                                   [x_0], [], [], [], [], [lower_bound], [upper_bound]);
-                % save as attribute
-                if constant
-                    self.V_constant = solution(1,1);
-                end
-                if trend
-                    self.V_trend = solution(1+constant,1);
-                end
-                if quadratic_trend
-                    self.V_quadratic_trend = solution(1+constant+trend,1);
-                end
-                self.V_exogenous = solution(1+constant+trend+quadratic_trend:end-1);
-                self.delta = solution(end,1);
-            end
-            % if verbose, display progress bar and success/failure of optimization
-            if verbose
-                cu.progress_bar_complete('Hyperparameter optimization:');
-                cu.optimization_completion(exitflag == 1);
-            end
-        end
+
     end
         
 
     methods (Access = protected, Hidden = true)
-        
-        
-        function prior(self)
-            
-            % creates prior elements b and V defined in (3.9.10)
 
-            % generate b
-            self.generate_b();
-            % generate V
-            self.generate_V();
-        end        
-        
-        
-        function generate_b(self)
-        
-            % creates prior element b
-        
-            % unpack
-            exogenous = self.exogenous;
-            constant = self.constant;
-            trend = self.trend;
-            quadratic_trend = self.quadratic_trend;
-            b_exogenous = self.b_exogenous;
-            b_constant = self.b_constant;
-            b_trend = self.b_trend;
-            b_quadratic_trend = self.b_quadratic_trend;
-            n_exogenous = self.n_exogenous;
-            % if b_exogenous is a scalar, turn it into a vector replicating the value
-            if isscalar(b_exogenous)
-                b_exogenous = b_exogenous * ones(n_exogenous, 1);
-            end
-            b = b_exogenous;
-            % if quadratic trend is included, add to prior mean
-            if quadratic_trend
-                b = [b_quadratic_trend; b];
-            end
-            % if trend is included, add to prior mean
-            if trend
-                b = [b_trend; b];
-            end
-            % if constant is included, add to prior mean
-            if constant
-                b = [b_constant; b];
-            end
-            % save as attribute
-            self.b = b;
-        end    
-        
-        
-        function generate_V(self)
-            
-            % creates prior element V
 
-            % unpack
-            exogenous = self.exogenous;
-            b = self.b;            
-            constant = self.constant;
-            trend = self.trend;
-            quadratic_trend = self.quadratic_trend;
-            V_exogenous = self.V_exogenous;
-            V_constant = self.V_constant;
-            V_trend = self.V_trend;
-            V_quadratic_trend = self.V_quadratic_trend;
-            n_exogenous = self.n_exogenous;
-            % if V_exogenous is a scalar, turn it into a vector replicating the value
-            if isscalar(V_exogenous)
-                V_exogenous = V_exogenous * ones(n_exogenous, 1);
+        function optimize_hyperparameters(self, type)
+            
+            % optimize hyperparameter V with marginal likelihood, either scalar v or vector V
+
+            if self.hyperparameter_optimization
+                % unpack
+                optimization_type = self.optimization_type;
+                constant = self.constant;
+                trend = self.trend;
+                quadratic_trend = self.quadratic_trend;            
+                verbose = self.verbose;
+                k = self.k;
+                % estimate prior elements to get proper estimate of b
+                self.prior();
+                % optimize: in the simplest case,  V = vI so only scalar v is optimized
+                if optimization_type == 1
+                    % initial value of optimizer
+                    x_0 = ones(2,1);
+                    % bounds for parameter values
+                    lower_bound = eps * ones(2, 1);
+                    upper_bound = 1000 * ones(2, 1);
+                    % optimize
+                    [solution, fval, exitflag] = minimize(@self.negative_likelihood_simple_V, ...
+                                       [x_0], [], [], [], [], [lower_bound], [upper_bound]);
+                    % generate V again and save as attribute
+                    self.V_constant = solution(1,1);
+                    self.V_trend = solution(1,1);
+                    self.V_quadratic_trend = solution(1,1);
+                    self.V_exogenous = solution(1,1);                
+                    self.delta = solution(2,1);
+                % in the second case, V is diagonal from vector v, so vector v is optimized
+                elseif optimization_type == 2
+                    % initial value of optimizer
+                    x_0 = ones(k + 1, 1);
+                    % bounds for parameter values
+                    lower_bound = eps * ones(k + 1, 1);
+                    upper_bound = 1000 * ones(k + 1, 1);
+                    % optimize
+                    [solution, fval, exitflag] = minimize(@self.negative_likelihood_full_V, ...
+                                       [x_0], [], [], [], [], [lower_bound], [upper_bound]);
+                    % save as attribute
+                    if constant
+                        self.V_constant = solution(1,1);
+                    end
+                    if trend
+                        self.V_trend = solution(1+constant,1);
+                    end
+                    if quadratic_trend
+                        self.V_quadratic_trend = solution(1+constant+trend,1);
+                    end
+                    self.V_exogenous = solution(1+constant+trend+quadratic_trend:end-1);
+                    self.delta = solution(end,1);
+                end
+                % if verbose, display progress bar and success/failure of optimization
+                if verbose
+                    cu.progress_bar_complete('Hyperparameter optimization:');
+                    cu.optimization_completion(exitflag == 1);
+                end
             end
-            V = V_exogenous;
-            % if quadratic trend is included, add to prior mean
-            if quadratic_trend
-                V = [V_quadratic_trend; V];
-            end
-            % if trend is included, add to prior mean
-            if trend
-                V = [V_trend; V];
-            end
-            % if constant is included, add to prior mean
-            if constant
-                V = [V_constant; V];
-            end
-            % convert the vector V into an array
-            inv_V_b = b ./ V;
-            inv_V = diag(1 ./ V);
-            V = diag(V);
-            % save as attributes
-            self.V = V;
-            self.inv_V = inv_V;
-            self.inv_V_b = inv_V_b;
-        end       
-        
+        end
+
         
         function posterior(self)
         
@@ -744,23 +597,23 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
             credibility_level = self.credibility_level;
             k = self.k;
             % initiate storage: 4 columns: lower bound, median, upper bound, standard deviation
-            estimates_beta = zeros(k,4);
+            beta_estimates = zeros(k,4);
             % critical value of Student distribution for credibility level
             Z = su.student_icdf((1 + credibility_level) / 2, df);
             % scale in textbook is square of scale for Python: take square root
             sqrt_scale = sqrt(diag(scale));
             % fill estimates
-            estimates_beta(:,1) = location - Z * sqrt_scale;
-            estimates_beta(:,2) = location;
-            estimates_beta(:,3) = location + Z * sqrt_scale;
-            estimates_beta(:,4) = sqrt(df / (df - 2)) * sqrt_scale;
+            beta_estimates(:,1) = location;
+            beta_estimates(:,2) = location - Z * sqrt_scale;
+            beta_estimates(:,3) = location + Z * sqrt_scale;
+            beta_estimates(:,4) = sqrt(df / (df - 2)) * sqrt_scale;
             % get point estimate for sigma (approximate median from Table d.17)
             shape = alpha_bar / 2;
             scale = delta_bar / 2;
-            estimates_sigma = (scale * (3 * shape + 0.2)) / (shape * (3 * shape - 0.8));
+            sigma_estimates = (scale * (3 * shape + 0.2)) / (shape * (3 * shape - 0.8));
             % save as attributes
-            self.estimates_beta = estimates_beta;
-            self.estimates_sigma = estimates_sigma; 
+            self.beta_estimates = beta_estimates;
+            self.sigma_estimates = sigma_estimates; 
         end
         
         
@@ -823,7 +676,43 @@ classdef HierarchicalBayesianRegression < handle & LinearRegression
             % take negative (minimize negative to maximize)
             negative_log_f_y = -(term_1 + term_2);
         end   
+
+
+        function [bayesian_forecast_evaluation_criteria] = bayesian_forecast_evaluation_criteria(self, y, forecast_location, forecast_scale, nu_i, m)
+            
+            % Bayesian forecast evaluation criteria from equations from equations (3.10.13) and (3.10.16)
+    
+            log_score = zeros(m,1);
+            crps = zeros(m,1);
+            for i = 1:m
+                % get actual, prediction mean, prediction variance
+                y_i = y(i);
+                mu_i = forecast_location(i);
+                sigma_i = forecast_scale(i,i);
+                % get log score from equation (3.10.13)
+                [log_pdf, ~] = su.student_pdf(y_i, mu_i, sigma_i, nu_i);
+                log_score(i) = - log_pdf;
+                % get CRPS from equation (3.10.16)
+                s_i = sqrt(sigma_i);
+                y_tld = (y_i - mu_i) / s_i;
+                [~, pdf] = su.student_pdf(y_tld, 0, 1, nu_i);
+                cdf = su.student_cdf(y_tld, 0, 1, nu_i);
+                term_1 = y_tld * (2 * cdf - 1);
+                term_2 = 2 * pdf * (nu_i + y_tld^2) / (nu_i - 1);
+                term_3 = - (2 * sqrt(nu_i) * beta(0.5, nu_i - 0.5)) / ((nu_i - 1) * beta(0.5, nu_i / 2)^2);
+                crps(i) = s_i * (term_1 + term_2 + term_3);
+            end
+            log_score = mean(log_score);
+            crps = mean(crps);   
+            bayesian_forecast_evaluation_criteria = struct;
+            bayesian_forecast_evaluation_criteria.log_score = log_score;
+            bayesian_forecast_evaluation_criteria.crps = crps;
+        end
+
+
     end
+
+    
 end
     
         

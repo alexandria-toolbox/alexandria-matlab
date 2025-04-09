@@ -1,7 +1,7 @@
-classdef rng
+classdef rn
     
 
-    % rng stands for random number generators
+    % rn stands for random number generators
     % A class containing static methods for random number generation
 
     
@@ -74,8 +74,9 @@ classdef rng
         end          
         
         
-        function [X] = matrix_normal(M, Sigma, Omega)
-            % [X] = matrix_normal(M, Sigma, Omega)
+        function [X] = matrix_normal(M, Sigma, Omega, varargin)
+            
+            % [X] = matrix_normal(M, Sigma, Omega, varargin)
             % random number generator for the matrix normal distribution
             % based on algorithm d.15
             %
@@ -86,12 +87,24 @@ classdef rng
             %     row scale (symmetric positive definite)
             % Omega : matrix of shape (m,m)
             %     column scale (symmetric positive definite)
+            % varargin : either zero or two additional inputs, bool and bool
+            %     if true, assumes that scales Sigma/Omega are replaced by their Cholesky factors
             %
             % returns:
             % X : matrix of shape (n,m)
             %     pseudo-random number from the matrix normal distribution
 
-            X = M + la.cholesky_nspd(Sigma) * randn(size(M)) * la.cholesky_nspd(Omega)';
+            if (isempty(varargin) || varargin{1} == false)
+                chol_Sigma = la.cholesky_nspd(Sigma);
+            elseif varargin{1} == true
+                chol_Sigma = Sigma;
+            end
+            if (isempty(varargin) || varargin{2} == false)
+                chol_Omega = la.cholesky_nspd(Omega);
+            elseif varargin{2} == true
+                chol_Omega = Omega;
+            end            
+            X = M + chol_Sigma * randn(size(M)) * chol_Omega';
         end
         
         
@@ -138,7 +151,7 @@ classdef rng
             % x : float
             %     pseudo-random number from the inverse Gamma distribution
 
-            x = 1 / rng.gamma(a, 1 / b);
+            x = 1 / rn.gamma(a, 1 / b);
         end
         
         
@@ -160,7 +173,7 @@ classdef rng
         end
         
         
-        function [X] = wishart(nu, S)
+        function [X] = wishart(nu, S, varargin)
             
             % [X] = wishart(nu, S)
             % random number generator for the Wishart distribution
@@ -171,6 +184,8 @@ classdef rng
             %     degrees of freedom (positive, nu >= n)
             % S : matrix of shape (n,n)
             %     scale (symmetric positive definite)
+            % varargin : up to one additional input, bool
+            %     if true, assumes that scale S is replaced by its Cholesky factor
             % 
             % returns:
             % X : matrix of shape (n,n)
@@ -181,20 +196,24 @@ classdef rng
                 A = randn(dimension, nu);
             else
                 degree_freedom = nu - (0:dimension-1);
-                A = diag(sqrt(rng.chi2(degree_freedom)));
+                A = diag(sqrt(rn.chi2(degree_freedom)));
                 index = la.lower_triangular_indices(dimension);
                 index_size = dimension * (dimension - 1) / 2;
                 A(index) = randn(index_size, 1);
             end
-            G = la.cholesky_nspd(S);
+            if (isempty(varargin) || varargin{1} == false)
+                G = la.cholesky_nspd(S);
+            elseif varargin{1} == true
+                G = S;
+            end 
             Z = G * A;
             X = Z * Z';
         end
         
         
-        function [X] = inverse_wishart(nu, S)
+        function [X] = inverse_wishart(nu, S, varargin)
             
-            % [X] = inverse_wishart(nu, S)
+            % [X] = inverse_wishart(nu, S, varargin)
             % random number generator for the inverse Wishart distribution
             % based on algorithms d.30 and d.31
             % 
@@ -203,19 +222,25 @@ classdef rng
             %     degrees of freedom (positive, nu >= n)
             % S : matrix of shape (n,n)
             %     scale (symmetric positive definite)
+            % varargin : up to one additional input, bool
+            %     if true, assumes that scale S is replaced by its Cholesky factor
             % 
             % returns:
             % X : matrix of shape (n,n)
             %     pseudo-random number from the inverse Wishart distribution
 
             dimension = size(S, 1);
-            G = la.cholesky_nspd(S);
+            if (isempty(varargin) || varargin{1} == false)
+                G = la.cholesky_nspd(S);
+            elseif varargin{1} == true
+                G = S;
+            end 
             if nu == floor(nu) && nu <= 80 + dimension
                 A = randn(dimension, nu);
                 X = G / (A * A') * G';
             else
                 degree_freedom = nu - (0:dimension-1);
-                A = diag(sqrt(rng.chi2(degree_freedom)));
+                A = diag(sqrt(rn.chi2(degree_freedom)));
                 index = la.upper_triangular_indices(dimension);
                 index_size = dimension * (dimension - 1) / 2;
                 A(index) = randn(index_size, 1);
@@ -243,7 +268,7 @@ classdef rng
             % x : float
             %     pseudo-random number from the student distribution
 
-            s = rng.inverse_gamma(0.5 * nu, 0.5 * nu);
+            s = rn.inverse_gamma(0.5 * nu, 0.5 * nu);
             z = s^0.5 * randn;
             x = sigma^0.5 * z + mu;
         end
@@ -267,7 +292,7 @@ classdef rng
             % x : matrix of shape (n,1)
             %     pseudo-random number from the multivariate student distribution
 
-            s = rng.inverse_gamma(0.5 * nu, 0.5 * nu);
+            s = rn.inverse_gamma(0.5 * nu, 0.5 * nu);
             z = s^0.5 * randn(size(Sigma,1),1);
             x = mu + la.cholesky_nspd(Sigma) * z;
         end
@@ -296,11 +321,11 @@ classdef rng
             [rows, columns] = size(M);
             Z = randn(rows, columns);
             if columns <= rows
-                Phi = rng.inverse_wishart(nu + columns - 1, nu * Omega);
+                Phi = rn.inverse_wishart(nu + columns - 1, nu * Omega);
                 G = la.cholesky_nspd(Sigma);
                 H = la.cholesky_nspd(Phi);
             else
-                Phi = rng.inverse_wishart(nu + rows - 1, nu * Sigma);
+                Phi = rn.inverse_wishart(nu + rows - 1, nu * Sigma);
                 G = la.cholesky_nspd(Phi);
                 H = la.cholesky_nspd(Omega);
             end
@@ -617,7 +642,85 @@ classdef rng
             end
 
         end
-    
+        
+        
+        function [Q] = uniform_orthogonal(n)
+
+            % uniform_orthogonal(n)
+            % random number generator for the uniform orthogonal matrix distribution
+            % based on paragraph following equation (4.14.33)
+            % 
+            % parameters:
+            % n : int
+            %     dimension of the matrix
+            % 
+            % returns:
+            % Q : matrix of size (n,n)
+            %     uniform orthogonal matrix
+
+            X = randn(n,n);
+            [raw_Q raw_R] = qr(X);
+            sign_swap = sign(diag(raw_R))';
+            Q = raw_Q .* sign_swap;
+        end
+        
+
+        function [Q] = zero_uniform_orthogonal(n, restriction_matrix, irf)
+
+            % zero_uniform_orthogonal(n, restriction_matrix, irf)
+            % random number generator for the uniform orthogonal matrix distribution with zero restrictions
+            % based on algorithm (14.5)
+            % 
+            % parameters:
+            % n : int
+            %     dimension of the matrix
+            % restriction_matrix : matrix of size (n_restrictions,3)
+            %     matrix of restriction indices for variable, shock and period
+            % irf : matrix of size (n,n,restriction_periods)
+            %     matrix of preliminary structural IRFs
+            % 
+            % returns:
+            % Q : matrix of size (n,n)
+            %     uniform orthogonal matrix compliant with zero restrictions
+            
+            zero_restriction_shocks = unique(restriction_matrix(:,2));
+            Q_j1 = [];
+            for j=1:n
+                if ismember(j, zero_restriction_shocks)
+                    shock_restrictions = restriction_matrix(restriction_matrix(:,2)==j,:);
+                    restriction_number = size(shock_restrictions,1);
+                    Z_jf = zeros(restriction_number,n);
+                    for i=1:restriction_number
+                        Z_jf(i,:) = irf(shock_restrictions(i,1),: ,shock_restrictions(i,3));
+                    end
+                else
+                    Z_jf = [];
+                end
+                R_j = [Z_jf;Q_j1'];
+                x_j = randn(n,1);
+                if isempty(R_j)
+                    q_j = x_j / norm(x_j);
+                else
+                    N_j = null(R_j);
+                    Nx_j = N_j' * x_j;
+                    q_j = N_j * (Nx_j / norm(Nx_j));
+                end
+                Q_j1 = [Q_j1 q_j];
+            end
+            Q = Q_j1; 
+        end
+
     end
   
 end
+
+
+
+
+
+
+
+
+
+
+

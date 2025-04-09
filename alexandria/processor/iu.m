@@ -116,7 +116,7 @@ classdef iu
             % bool: bool
             %     1 if x is char representing integer, 0 otherwise
             
-            if ischar(x) && numel(regexp(x, '\d')) == numel(x)
+            if (ischar(x) || isstring(x)) && numel(regexp(x, '\d')) == numel(x)
                 bool = true;
             else
                 bool = false;
@@ -145,6 +145,49 @@ classdef iu
         end
         
         
+        function [bool] = contains_char(string_array, x)
+            
+            % [bool] = contains_char(string_array, x)
+            % checks whether char x appears in string array
+            %
+            % parameters:
+            % string_array : string array
+            %     string array potentially including char x
+            % x : char
+            %     char to be tested for existence in string_array
+            %
+            % returns:
+            % bool : bool
+            %     1 if x is in string_array, 0 otherwise
+            
+            if sum(contains(string_array, x)) >= 1
+                bool = true;
+            else
+                bool = false;
+            end
+        end
+        
+        
+        function [structure] = concatenate_structures(structure_1, structure_2)
+            
+            % [structure] = concatenate_structures[structure_1, structure_2]
+            % concatenate two structures that have different keys
+            %
+            % parameters:
+            % structure_1 : struct
+            %     first structure in concatenation
+            % structure_2 : struct
+            %     second structure in concatenation  
+            %
+            % returns:
+            % structure : struct
+            %     concatenated structure
+            
+            structure = cell2struct([struct2cell(structure_1);struct2cell(structure_2)], ...
+                                    [fieldnames(structure_1);fieldnames(structure_2)]);
+        end
+            
+
         function check_file_path(path, file)
 
             % check_file_path(path, file)
@@ -195,15 +238,14 @@ classdef iu
             % make sure path and file strings are properly formatted
             path = iu.fix_char(path);
             file = iu.fix_char(file);
-            % prepare options for file loading
             file_path = fullfile(path, file);
-            opts = detectImportOptions(file_path);
-            opts.VariableTypes{1} = 'char';
-            opts.VariableTypes([2:end]) = {'double'};
             % load file
-            data = readtable(file_path, opts, 'ReadRowNames',true);
-            data = removevars(data,{'Var1'});
-            % string(data.Properties.RowNames)
+            data = readtable(file_path);
+            % create index, if relevant
+            if isequal(data.Properties.VariableNames{1},'Var1')
+                data.Properties.RowNames = string(data{:,'Var1'});
+                data = removevars(data,{'Var1'});
+            end
         end
         
         
@@ -296,8 +338,12 @@ classdef iu
             % if variable array is not empty, recover sample for given variables and dates
             if ~iu.is_empty(variables)
                 sample = data(dates, variables);
+                types = convertCharsToStrings(varfun(@class,sample,'OutputFormat','cell'));
+                % test for non-numerical values (strings), and if any, raise error
+                if any(contains(types,'cell'))
+                    error(['Data error for file ' file '. ' tag ' contains text entries, which are unhandled.']);                
                 % test for NaNs, and if any, raise error
-                if any(any(isnan(table2array(sample))))
+                elseif any(any(isnan(table2array(sample))))
                     error(['Data error for file ' file '. ' tag ' contains NaN entries, which are unhandled.']);
                 % else, data is valid: convert to matrix
                 else
@@ -575,6 +621,8 @@ classdef iu
             %     if true, checks that variables are provided in file
             % periods : int
             %     number of forecast periods
+            % tag : char
+            %     tag indicating the varables to be checked
             %
             % returns:
             % sample_p : matrix
@@ -598,17 +646,23 @@ classdef iu
                 end
             % if no variable is missing, recover prediction data 
             else
-                sample_p = table2array(data(:,variables));
-                % if too few periods of data are provided, raise error
-                if size(data, 1) < periods
-                    error(['Data error for file ' file '. Forecasts must be conducted for ' str2num(periods) ' periods, but ' tag ' is provided for fewer periods.'])
-                % else, reduce data to number of periods
+                % if variables is empty, return empty matrix
+                if variables == ""
+                    sample_p = [];
+                % if there are some variables to fetch, get them
                 else
-                    sample_p = sample_p(1:periods,:);
-                end
-                % test for NaNs, and if any, raise error
-                if any(isnan(sample_p(:)))
-                    error(['Data error for file ' file '. ' tag ' contains NaN entries, which are unhandled.'])
+                    sample_p = table2array(data(:,variables));
+                    % if too few periods of data are provided, raise error
+                    if size(data, 1) < periods
+                        error(['Data error for file ' file '. Forecasts must be conducted for ' num2str(periods) ' periods, but ' tag ' is provided for fewer periods.'])
+                    % else, reduce data to number of periods
+                    else
+                        sample_p = sample_p(1:periods,:);
+                    end
+                    % test for NaNs, and if any, raise error
+                    if any(isnan(sample_p(:)))
+                        error(['Data error for file ' file '. ' tag ' contains NaN entries, which are unhandled.'])
+                    end
                 end
             end
         end
@@ -652,11 +706,590 @@ classdef iu
             end
         end
         
+        
+        function check_coefficients_table(data, endogenous_variables, exogenous_variables, ...
+                 lags, constant, trend, quadratic_trend, file)
+        
+            % check_coefficients_table(data, endogenous_variables, exogenous_variables, ...
+            %                          lags, constant, trend, quadratic_trend, file)
+            % checks whether constrained coefficient table is of valid format
+            % 
+            % parameters:
+            % data : table
+            %     table containing constrained coefficient information
+            % endogenous_variables : string array
+            %     array containing the names of endogenous variables
+            % exogenous_variables : string array
+            %     array containing the names of exogenous variables
+            % lags : int
+            %     number of lags for the VAR model
+            % constant : bool
+            %     set to true if a constant is included in the model
+            % trend : bool
+            %     set to true if a linear trend is included in the model        
+            % quadratic_trend : bool
+            %     set to true if a quadratic trend is included in the model
+            % file : char
+            %     name of data file (with extension csv, xls or xlsx)
+            % 
+            % returns:
+            % none
+            
+            columns = string(data.Properties.VariableNames);
+            if ~isequal(columns, ["variable" "responding_to" "lag" "mean" "variance"])
+                error(['Data error for file ' file '. Column names don''t match the required pattern.']);
+            end
+            types = convertCharsToStrings(varfun(@class,data,'OutputFormat','cell'));
+            if ~isequal(types(3), "double") || (isequal(types(3), "double") && ~isequal(data.lag,floor(data.lag)))
+                error(['Data error for file ' file '. Some entries in column ' ...
+                    '''lag'' are not integers.']);
+            end
+            if ~isequal(types(4), "double")
+                error(['Data error for file ' file '. Some entries in column ' ...
+                    '''mean'' are not numeric.']);
+            end       
+            if ~isequal(types(5), "double")
+                error(['Data error for file ' file '. Some entries in column ' ...
+                    '''variance'' are not numeric.']);
+            end              
+            automated_variables = ["constant" "trend" "quadratic_trend"];
+            variables = [endogenous_variables exogenous_variables automated_variables];
+            all_exogenous = [exogenous_variables automated_variables];
+            all_lags = -1:lags;
+            for i=1:size(data,1)
+                variable_value = char(table2array(data(i,["variable"])));
+                responding_value = char(table2array(data(i,["responding_to"])));
+                lag_value = table2array(data(i,["lag"]));
+                mean_value = table2array(data(i,["mean"]));
+                var_value = table2array(data(i,["variance"]));
+                if ~iu.contains_char(endogenous_variables, variable_value)
+                    error(['Data error for file ' file '. Entry for column ' ...
+                    '''variable'', row ' num2str(i) ', does not correspond to an endogenous variable.']);
+                end
+                if ~iu.contains_char(variables,responding_value)
+                    error(['Data error for file ' file '. Entry for column ' ...
+                    '''responding_to'', row ' num2str(i) ', does not correspond to any of the model variables.']);
+                end
+                if isequal(responding_value, 'constant') && ~constant
+                    error(['Data error for file ' file '. Entry for column ' ...
+                    '''responding_to'', row ' num2str(i) ', is ''constant'', but constant is not activated.']);
+                end
+                if isequal(responding_value, 'trend') && ~trend
+                    error(['Data error for file ' file '. Entry for column ' ...
+                    '''responding_to'', row ' num2str(i) ', is ''trend'', but trend is not activated.']);
+                end
+                if isequal(responding_value, 'quadratic_trend') && ~quadratic_trend
+                    error(['Data error for file ' file '. Entry for column ' ...
+                    '''responding_to'', row ' num2str(i) ', is ''quadratic_trend'', but quadratic trend is not activated.']);
+                end
+                if ~isnumeric(lag_value) || isnan(lag_value) || isinf(lag_value) 
+                    error(['Data error for file ' file '. Entry for column ' ...
+                    '''lag'', row ' num2str(i) ' is not numeric.']);    
+                end
+                if ~iu.contains_char(all_exogenous,responding_value) && ~ismember(lag_value,all_lags)
+                    error(['Data error for file ' file '. Entry for column ' ...
+                    '''lag'', row ' num2str(i) ' should be an integer in the range of specified lags.']);
+                end                
+                if isnan(mean_value) || isinf(mean_value) 
+                    error(['Data error for file ' file '. Entry for column ' ...
+                    '''mean'', row ' num2str(i) ', is NaN of inf.']);
+                end
+                if isnan(var_value) || isinf(var_value) 
+                    error(['Data error for file ' file '. Entry for column ' ...
+                    '''variance'', row ' num2str(i) ', is NaN of inf.']);
+                end
+                if var_value <= 0
+                    error(['Data error for file ' file '. Entry for column ' ...
+                    '''variance'', row ' num2str(i) ' should be strictly positive.']);
+                end
+            end
+        end
+        
+        
+        function [constrained_coefficients_table] = get_constrained_coefficients_table(data, ...
+                                                    endogenous_variables, exogenous_variables)
+        
+            % function [constrained_coefficients_table] = get_constrained_coefficients_table(data, ...
+            %                                             endogenous_variables, exogenous_variables)
+            % recover constrained coefficient table in numeric format
+            %
+            % parameters:
+            % data: table
+            %     table containing constrained coefficient information
+            % endogenous_variables : string array
+            %     array containing the names of endogenous variables
+            % exogenous_variables : string array
+            %     array containing the names of exogenous variables 
+            %
+            % returns:
+            % constrained_coefficients_table : matrix
+            %     ndarray containing numeric values only for constrained coefficients prior
 
+            automated_variables = ["constant" "trend" "quadratic_trend"];
+            rows = size(data,1);
+            temp = zeros(rows,5);
+            for i=1:rows
+                variable_value = char(table2array(data(i,["variable"])));
+                responding_value = char(table2array(data(i,["responding_to"])));
+                lag_value = table2array(data(i,["lag"]));
+                mean_value = table2array(data(i,["mean"]));
+                var_value = table2array(data(i,["variance"]));   
+                temp(i,1) = find(strcmp(endogenous_variables, variable_value));
+                if isequal(responding_value, 'constant');
+                    temp(i,2) = 0.1;
+                elseif isequal(responding_value, 'trend');
+                    temp(i,2) = 0.2;
+                elseif isequal(responding_value, 'quadratic_trend');
+                    temp(i,2) = 0.3;
+                elseif iu.contains_char(endogenous_variables,responding_value) 
+                    temp(i,2) = find(strcmp(endogenous_variables, responding_value));
+                elseif iu.contains_char(exogenous_variables,responding_value) 
+                    temp(i,2) = -find(strcmp(exogenous_variables, responding_value));
+                end
+                if ~iu.contains_char(automated_variables,responding_value)
+                    temp(i,3) = lag_value;
+                end
+                temp(i,4) = mean_value;
+                temp(i,5) = var_value;
+            end
+            constrained_coefficients_table = temp;
+        end
+        
+        
+        function check_long_run_table(data, endogenous_variables, file)
+            
+            % check_long_run_table(data, endogenous_variables, file)
+            % checks whether long run prior table is of valid format
+            % 
+            % parameters:
+            % data : table
+            %     table containing constrained coefficient information
+            % endogenous_variables : string array
+            %     array containing the names of endogenous variables
+            % file : char
+            %     name of data file (with extension csv, xls or xlsx)
+            % 
+            % returns:
+            % none
+            
+            columns = string(data.Properties.VariableNames);
+            if ~isequal(columns, endogenous_variables)
+                error(['Data error for file ' file '. Column names don''t match the set of endogenous variables.']);
+            end
+            rows = string(data.Properties.RowNames)';
+            if ~isequal(rows, endogenous_variables)
+                error(['Data error for file ' file '. Row names don''t match the set of endogenous variables.']);
+            end
+            types = convertCharsToStrings(varfun(@class,data,'OutputFormat','cell'));
+            for i=1:numel(types)
+                if ~isequal(types(i),"double")
+                    error(['Data error for file ' file '. Some entries in column ' convertStringsToChars(columns(i)) ' are not numeric.']);
+                end
+            end
+            values = table2array(data);
+            dimension = size(data,1);
+            for i = 1:dimension
+                for j = 1:dimension
+                    value = values(i,j);
+                    if ~isnumeric(value) || isnan(value) || isinf(value)
+                        error(['Data error for file ' file '. Entry in row ' num2str(i) ', column ' num2str(j) ' is not numeric, NaN or inf.']);
+                    end
+                end
+            end
+        end
+        
+
+        function [text_array] = strseq(text, indices)
+
+            % strseq(text, indices)
+            % concatenates indices to text and stores in string array
+            %
+            % parameters:
+            % text : char
+            %     text to concatenate to indices
+            % indices : vector of size (1,n)
+            %     indices to concatenate to text            
+            % 
+            % returns:
+            % text_array : string array
+            %     array of concatenated text/indices
+
+            text_array = string();
+            for i=1:numel(indices)
+                text_array(i) = [text num2str(indices(i))];
+            end
+        end
+        
+        function check_condition_table(data, endogenous_variables, periods, file)
+            
+            % check_condition_table(data, endogenous_variables, periods, file)
+            % checks whether condition table is of valid format
+            % 
+            % parameters:
+            % data : table
+            %     table containing conditional forcast information
+            % endogenous_variables : string array
+            %     array containing the names of endogenous variables
+            % periods : int
+            %     number of forecast periods            
+            % file : char
+            %     name of data file (with extension csv, xls or xlsx)
+            % 
+            % returns:
+            % none
+            
+            number_endogenous = numel(endogenous_variables);
+            shock_list = iu.strseq('shock',[1:number_endogenous]);
+            columns = string(data.Properties.VariableNames);
+            expected_columns = ["variable" "period" "mean" "variance" shock_list];
+            if ~isequal(columns, expected_columns)
+                error(['Data error for file ' file '. Column names don''t match the required pattern.']);
+            end
+            types = convertCharsToStrings(varfun(@class,data,'OutputFormat','cell'));
+            if ~isequal(types(2), "double") || (isequal(types(2), "double") && ~isequal(data.period,floor(data.period)))
+                error(['Data error for file ' file '. Some entries in column ' ...
+                    '''period'' are not integers.']);
+            end
+            if ~isequal(types(3), "double")
+                error(['Data error for file ' file '. Some entries in column ' ...
+                    '''mean'' are not numeric.']);
+            end       
+            if ~isequal(types(4), "double")
+                error(['Data error for file ' file '. Some entries in column ' ...
+                    '''variance'' are not numeric.']);
+            end
+            for i=1:number_endogenous
+                if ~isequal(types(4+i), "double")
+                    error(['Data error for file ' file '. Entry in row 1, column ' ...
+                        '''shock' num2str(i) ''' should be 0 or 1.']);
+                end
+            end
+            rows = size(data,1);
+            for i=1:rows
+                variable = char(table2array(data(i,["variable"])));
+                period = table2array(data(i,["period"]));
+                mean = table2array(data(i,["mean"]));
+                variance = table2array(data(i,["variance"])); 
+                if ~iu.contains_char(endogenous_variables, variable)
+                    error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                    ', column  ''variable'' does not correspond to one of the model endogenous variables.']);
+                end
+                if ~isnumeric(period)
+                    error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                    ', column  ''period'' is not numeric, NaN of inf.']);                    
+                end
+                if period > periods
+                    error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                    ', column  ''period'' is larger than the number of forecast periods.']);
+                end
+                if period <= 0
+                    error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                    ', column  ''period'' should be a positive integer.']);
+                end
+                if ~isnumeric(mean)
+                    error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                    ', column  ''mean'' is not numeric, NaN of inf.']);                    
+                end         
+                if ~isnumeric(variance)
+                    error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                    ', column  ''variance'' is not numeric, NaN of inf.']);                    
+                end  
+                if variance < 0
+                    error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                    ', column  ''variance'' should be non-negative.']);
+                end
+                if i == 1
+                    for j=1:number_endogenous
+                        shock = table2array(data(1,['shock' num2str(j)]));
+                        if ~ismember(shock, [0 1])
+                            error(['Data error for file ' file '. Entry in row 1, column ' ...
+                            '''shock' num2str(i) ''' should be 1 or empty.']);
+                        end
+                    end
+                end
+            end
+        end
+        
+        
+        function [condition_table, shock_table] = get_condition_table(data, endogenous_variables)
+            
+            % function [condition_table, shock_table] = get_condition_table(data, endogenous_variables)
+            % recover condition table in numeric format
+            %
+            % parameters:
+            % data: table
+            %     table containing constrained coefficient information
+            % endogenous_variables : string array
+            %     array containing the names of endogenous variables
+            %
+            % returns:
+            % condition_table : matrix
+            %     ndarray containing numeric values for conditions
+            % shock_table : matrix
+            %     ndarray containing numeric values for shocks
+            
+            rows = size(data,1);
+            condition_table = zeros(rows,4);
+            for i = 1:rows
+                variable = char(table2array(data(i,["variable"])));
+                condition_table(i,1) = find(strcmp(endogenous_variables, variable));
+                condition_table(i,2) = table2array(data(i,["period"]));
+                condition_table(i,3) = table2array(data(i,["mean"]));
+                if table2array(data(i,["variance"])) == 0
+                    condition_table(i,4) = 1e-16;
+                else
+                    condition_table(i,4) = table2array(data(i,["variance"]));
+                end
+            end
+            shocks = table2array(data(1,5:end))';
+            shocks(isnan(shocks)) = 0;
+            shock_table = shocks;
+        end
+        
+        
+        function [raw_dates] = get_raw_sample_dates(path, file, start_date, end_date)
+    
+            % [raw_dates] = get_raw_sample_dates(path, file, start_date, end_date)
+            % get sample dates, in raw format (as in data file, without any convesion to datetime)
+            % 
+            % parameters:
+            % path : char
+            %     path to folder containing data file
+            % file : char
+            %     name of data file (with extension csv, xls or xlsx)
+            % start_date : char
+            %     sample start date to search in dataframe index
+            % end_date : char
+            %     sample end date to search in dataframe index              
+            % 
+            % returns:
+            % raw_dates : date array
+            %     array of datetime entries
+
+            data = iu.load_data(path, file);
+            dates = string(data.Properties.RowNames);
+            start_date_index = find(all(ismember(dates, start_date), 2));
+            end_date_index = find(all(ismember(dates, end_date), 2));
+            raw_dates = dates(start_date_index:end_date_index);
+        end
+        
+        
+        function check_restriction_table(data, raw_dates, endogenous_variables, proxy_variables, var_type, irf_periods, file)
+            
+            % check_restriction_table(data, raw_dates, endogenous_variables, irf_periods, file)
+            % checks whether restriction table is of valid format
+            % 
+            % parameters:
+            % data : table
+            %     table containing constrained coefficient information
+            % raw_dates : date array
+            %     array of datetime entries               
+            % endogenous_variables : string array
+            %     array containing the names of endogenous variables
+            % proxy_variables : string array
+            %     array containing the names of proxy variables            
+            % var_type : int
+            %     type of VAR model
+            % irf_periods : int
+            %     number of IRF periods      
+            % file : char
+            %     name of data file (with extension csv, xls or xlsx)
+            % 
+            % returns:
+            % none        
+        
+            number_endogenous = numel(endogenous_variables);
+            number_proxys = numel(proxy_variables);
+            shock_list = iu.strseq('shock',[1:number_endogenous]);
+            columns = string(data.Properties.VariableNames);
+            expected_columns = ["type" "variable" "period" shock_list];
+            if ~isequal(columns, expected_columns)
+                error(['Data error for file ' file '. Column names don''t match the required pattern.']);
+            end
+            rows = size(data,1);
+            for i = 1:rows
+                restriction_type = char(table2array(data(i,["type"])));
+                variable = char(table2array(data(i,["variable"])));
+                try
+                    period = num2str(table2array(data(i,["period"])));
+                catch
+                    period = char(table2array(data(i,["period"])));
+                end
+                if ~ismember(restriction_type, ["sign" "zero" "shock" "historical" "covariance"])
+                    error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                    ', column ''type'' does not correspond to one of the allowed restriction types.']);                      
+                end
+                if isequal(restriction_type,'sign') || isequal(restriction_type,'zero')
+                    if ~iu.is_digit(period)
+                        error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                        ', column ''period'' should be an integer.']); 
+                    elseif str2num(period) < 0 || str2num(period) > irf_periods
+                        error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                        ', column ''period'' should be an integer between 0 and IRF periods.']); 
+                    end
+                end
+                if (isequal(restriction_type,'shock') || isequal(restriction_type,'historical')) && ~ismember(period,raw_dates)
+                    error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                    ', column ''period'' should be a sample date.']);                    
+                end
+                if ~isequal(restriction_type,'shock') && ~isequal(restriction_type,'covariance') && ~ismember(variable,endogenous_variables)
+                    error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                    ', column ''variable'' does not correspond to one of the model endogenous variables.']);                     
+                end
+                for j=1:number_endogenous
+                    try
+                        shock = num2str(table2array(data(i,3+j)));
+                    catch
+                        shock = char(table2array(data(i,3+j)));
+                    end
+                    if ~isequal(shock,'NaN') && ~isempty(shock) && isnan(str2double(shock))
+                        error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                        ', column ''shock' num2str(j) ''' is not numeric.']);
+                    end
+                    if ~ismember(shock,["-1" "0" "1"])
+                        error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                        ', column ''shock' num2str(j) ''' is not -1, 0 or 1.']);
+                    end
+                end
+                if ~ismember(numel(nonzeros(table2array(data(i,4:end)))),[1 2])
+                    error(['Data error for file ' file '. Ill-defined restrictions in row ' num2str(i) ...
+                        ', shock columns must contain either 1 or 2 non-zero coefficients.']);
+                end
+                if isequal(restriction_type,'covariance') && var_type ~= 7
+                    error(['Data error for file ' file '. Covariance restriction found in row ' num2str(i) ', but VAR type is not proxy-SVAR.']);
+                elseif isequal(restriction_type,'covariance') && var_type == 7
+                    for j=1:(number_endogenous-number_proxys)
+                        shock = table2array(data(i,3+j));
+                        if shock ~= 0
+                            error(['Data error for file ' file '. Entry in row ' num2str(i) ...
+                                ', column "shock' num2str(j) '" has covariance restriction while not correlated with proxys.']);
+                        end
+                    end
+                end
+            end
+        end
+        
+        
+        function [restriction_table] = get_restriction_table(data, raw_dates, endogenous_variables, proxy_variables)
+            
+            % function [condition_table, shock_table] = get_condition_table(data, endogenous_variables)
+            % recover condition table in numeric format
+            %
+            % parameters:
+            % data: table
+            %     table containing constrained coefficient information
+            % raw_dates : date array
+            %     array of datetime entries              
+            % endogenous_variables : string array
+            %     array containing the names of endogenous variables
+            % proxy_variables : string array
+            %     array containing the names of proxy variables 
+            %
+            % returns:
+            % restriction_table : matrix
+            %     ndarray containing numeric values for restrictions
+            
+            rows = size(data,1);
+            columns = size(data,2);
+            number_endogenous = numel(endogenous_variables);
+            restriction_types = ["zero" "sign" "shock" "historical" "covariance"];
+            restriction_table = zeros(rows,columns);
+            for i = 1:rows
+                restriction_type = char(table2array(data(i,["type"])));
+                period = char(num2str(table2array(data(i,["period"]))));
+                variable = char(table2array(data(i,["variable"])));
+                restriction_table(i,1) = find(strcmp(restriction_types, restriction_type));
+                if isequal(restriction_type,'sign') || isequal(restriction_type,'zero') || isequal(restriction_type,'historical')
+                    restriction_table(i,2) = find(strcmp(endogenous_variables, variable));
+                elseif isequal(restriction_type,'covariance')
+                    restriction_table(i,2) = find(strcmp(proxy_variables, variable));
+                end                
+                if isequal(restriction_type,'sign') || isequal(restriction_type,'zero')
+                    restriction_table(i,3) = str2num(period);
+                elseif isequal(restriction_type,'shock') || isequal(restriction_type,'historical')
+                    restriction_table(i,3) = find(strcmp(raw_dates, period));
+                end
+                for j=4:3+number_endogenous
+                    restriction_table(i,j) = table2array(data(i,j));
+                end
+            end
+        end
+
+
+        function [model_name model_class model_type] = identify_model(model)
+            
+            % identify_model(model)
+            % get model and model type
+            % 
+            % parameters:
+            % model : class
+            %     class from which model must be extracted
+            % 
+            % returns:
+            % model_name : char
+            %     model name
+            % model_class : int
+            %     general model class (linear regression, VAR, ...)
+            % model_type : int
+            %     specific model type (maximum likelihood regression, simple Bayesian regression, ...)
+            
+            class_name = class(model);
+            if isequal(class_name, 'MaximumLikelihoodRegression')
+                model_name = 'Maximum Likelihood Regression';
+                model_class = 1;
+                model_type = 1;
+            elseif isequal(class_name, 'SimpleBayesianRegression')
+                model_name = 'Simple Bayesian Regression';
+                model_class = 1;
+                model_type = 2;
+            elseif isequal(class_name, 'HierarchicalBayesianRegression')
+                model_name = 'Hierarchical Bayesian Regression';
+                model_class = 1;
+                model_type = 3;
+            elseif isequal(class_name, 'IndependentBayesianRegression')
+                model_name = 'Independent Bayesian Regression';
+                model_class = 1;
+                model_type = 4;
+            elseif isequal(class_name, 'HeteroscedasticBayesianRegression')
+                model_name = 'Heteroscedastic Bayesian Regression';
+                model_class = 1;
+                model_type = 5;
+            elseif isequal(class_name, 'AutocorrelatedBayesianRegression')
+                model_name = 'Autocorrelated Bayesian Regression';
+                model_class = 1;
+                model_type = 6;
+            elseif isequal(class_name, 'MaximumLikelihoodVar')
+                model_name = 'Maximum Likelihood Var';
+                model_class = 2;
+                model_type = 1;      
+            elseif isequal(class_name, 'MinnesotaBayesianVar')
+                model_name = 'Minnesota Bayesian Var';
+                model_class = 2;
+                model_type = 2;
+            elseif isequal(class_name, 'NormalWishartBayesianVar')
+                model_name = 'Normal-Wishart Bayesian Var';
+                model_class = 2;
+                model_type = 3;
+            elseif isequal(class_name, 'IndependentBayesianVar')
+                model_name = 'Independent Bayesian Var';
+                model_class = 2;
+                model_type = 4;
+            elseif isequal(class_name, 'DummyObservationBayesianVar')
+                model_name = 'Dummy Observation Bayesian Var';
+                model_class = 2;
+                model_type = 5;
+            elseif isequal(class_name, 'LargeBayesianVar')
+                model_name = 'Large Bayesian Var';
+                model_class = 2;
+                model_type = 6;
+            elseif isequal(class_name, 'BayesianProxySvar')
+                model_name = 'Bayesian Proxy Svar';
+                model_class = 2;
+                model_type = 7;               
+            end
+        end
+        
     end
-        
-        
+           
 end
-    
-    
-    
+   

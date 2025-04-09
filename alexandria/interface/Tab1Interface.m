@@ -87,7 +87,7 @@ classdef Tab1Interface < handle
             % version
             self.t1_txt3 = uicontrol('style', 'text');
             set(self.t1_txt3, 'unit', 'pixels', 'position', [15 490 600 30]);
-            set(self.t1_txt3, 'String', ' V 0.1 - Matlab edition');
+            set(self.t1_txt3, 'String', ' V 1.0 - Matlab edition');
             set(self.t1_txt3, 'HorizontalAlignment', 'left');
             set(self.t1_txt3, 'FontName', 'Serif');
             set(self.t1_txt3, 'FontSize', 16);
@@ -133,7 +133,7 @@ classdef Tab1Interface < handle
             % model selection menu
             self.t1_mnu1 = uicontrol('style', 'popupmenu');
             set(self.t1_mnu1, 'position',[38 345 250 50]);            
-            set(self.t1_mnu1, 'String', {'1. linear regression'});    
+            set(self.t1_mnu1, 'String', {'1. linear regression', '2. vector autoregression'});    
             set(self.t1_mnu1, 'Value', self.user_inputs.tab_1.model);
             set(self.t1_mnu1, 'CallBack', @self.cb_t1_mnu1);
 
@@ -548,7 +548,9 @@ classdef Tab1Interface < handle
                 delete(fullfile(self.interface_path, 'user_inputs.mat'));
             end
             self.create_default_inputs();
+            self.create_tab_2_lr;
             self.reset_default_inputs();
+            self.created_tab_2_var = false;
         end          
         
 

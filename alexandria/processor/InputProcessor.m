@@ -1,6 +1,5 @@
-classdef InputProcessor < handle & RegressionProcessor
+classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionProcessor
     
-
     
     properties (GetAccess = public, SetAccess= protected)
         user_inputs
@@ -28,12 +27,21 @@ classdef InputProcessor < handle & RegressionProcessor
         forecast_periods
         conditional_forecast_type
         forecast_file
+        conditional_forecast_file
         forecast_evaluation
         irf_periods
         structural_identification
         structural_identification_file
-    end       
-    
+        estimation_start
+        estimation_end
+    end    
+
+
+    properties (GetAccess = public, SetAccess = {?RegressionProcessor, ?VectorAutoregressionProcessor})
+        results_information
+        graphics_information
+    end
+
     
     %---------------------------------------------------
     % Methods
@@ -60,9 +68,56 @@ classdef InputProcessor < handle & RegressionProcessor
             self.data_inputs();
         end
 
-        
+
+        function input_timer(self, tag)
+            if isequal(tag, 'start')
+                self.estimation_start = now;
+            elseif isequal(tag, 'end')
+                self.estimation_end = now;
+            end
+        end
+
+
+        function make_results_information(self)
+            % initialize information dictionary
+            self.results_information = struct;
+            % make general information
+            self.make_general_information();
+            % if model is model 1, additionally make information for linear regression
+            if self.model == 1
+                self.make_regression_information();
+            % if model is model 2, additionally make information for VAR models
+            elseif self.model == 2
+                self.make_var_information();
+            end
+            % finally add complementary information for applications
+            self.make_application_information();
+        end
+
+
+        function make_graphics_information(self)
+            % initialize graphics dictionary
+            self.graphics_information = struct;
+            % get endogenous variable
+            self.graphics_information.endogenous_variables = self.endogenous_variables;
+            % get exogenous variables
+            if isempty(self.exogenous_variables)
+                self.graphics_information.exogenous_variables = [];
+            else
+                self.graphics_information.exogenous_variables = self.exogenous_variables;
+            end
+            % if model is model 1, additionally make information for linear regression
+            if self.model == 1
+                self.make_regression_graphics_information();
+            % if model is model 2, additionally make information for vector autoregression
+            elseif self.model == 2
+                self.make_var_graphics_information();
+            end
+        end
+
+
     end
-    
+
     
     %---------------------------------------------------
     % Methods (Access = private)
@@ -81,7 +136,7 @@ classdef InputProcessor < handle & RegressionProcessor
             self.exogenous_variables = self.get_exogenous_variables();
             % get data frequency
             self.frequency = self.get_frequency();
-            % get sampe periods
+            % get sample periods
             [self.start_date, self.end_date] = self.get_sample_dates();
             % get path to project folder
             self.project_path = self.get_project_path();
@@ -100,6 +155,9 @@ classdef InputProcessor < handle & RegressionProcessor
             % if model is model 1, get user inputs for linear regression
             if self.model == 1
                 self.regression_inputs();
+            % if model is model 2, get user inputs for vector autoregression
+            elseif self.model == 2
+                self.vector_autoregression_inputs();
             end
         end
             
@@ -131,6 +189,8 @@ classdef InputProcessor < handle & RegressionProcessor
             self.conditional_forecast_type = self.get_conditional_forecast_type();
             % recover name of forecast input file
             self.forecast_file = self.get_forecast_file();
+            % recover name of conditional forecast input file
+            self.conditional_forecast_file = self.get_conditional_forecast_file();
             % recover forecast evaluation decision
             self.forecast_evaluation = self.get_forecast_evaluation();
             % recover number of irf periods
@@ -146,14 +206,17 @@ classdef InputProcessor < handle & RegressionProcessor
             % if model is model 1, get data for linear regression 
             if self.model == 1
                 self.regression_data();
+            % else, if model is model 2, get data for vector autoregression
+            elseif self.model == 2
+                self.vector_autoregression_data();
             end
         end
         
         
         function [model] = get_model(self)
         model = self.user_inputs.tab_1.model;
-            if ~ismember(model, [1])
-                error(['Value error for model. Should be equal to 1.']);
+            if ~ismember(model, [1 2])
+                error(['Value error for model. Should be 1 or 2.']);
             end
         end
         
@@ -194,8 +257,8 @@ classdef InputProcessor < handle & RegressionProcessor
                 error(['Type error for sample dates. Should non-empty list of strings.']);
             end
             sample_dates = iu.char_to_array(sample_dates);
-            start_date = sample_dates(1);
-            end_date = sample_dates(2);
+            start_date = char(sample_dates(1));
+            end_date = char(sample_dates(2));
         end
         
         
@@ -382,6 +445,9 @@ classdef InputProcessor < handle & RegressionProcessor
             if ~(ischar(forecast_periods) || iu.is_integer(forecast_periods))
                 error(['Type error for forecast periods. Should be integer.']);
             end
+            if ismember(self.model, [2]) && (self.forecast || self.conditional_forecast) && isempty(forecast_periods)
+                error(['Type error for forecast periods. Should be integer.']);
+            end
             if ~iu.is_empty(forecast_periods) && ischar(forecast_periods)
                 if iu.is_digit(forecast_periods)
                     forecast_periods = str2double(forecast_periods);
@@ -412,6 +478,15 @@ classdef InputProcessor < handle & RegressionProcessor
         end
         
         
+        function [conditional_forecast_file] = get_conditional_forecast_file(self)
+            conditional_forecast_file = self.user_inputs.tab_3.conditional_forecast_file;
+            if ~ischar(conditional_forecast_file)
+                error(['Type error for conditional forecast file. Should be char.']);
+            end
+            conditional_forecast_file = iu.fix_char(conditional_forecast_file);
+        end
+        
+        
         function [forecast_evaluation] = get_forecast_evaluation(self)
             forecast_evaluation = self.user_inputs.tab_3.forecast_evaluation;
             if ~islogical(forecast_evaluation)
@@ -423,6 +498,9 @@ classdef InputProcessor < handle & RegressionProcessor
         function [irf_periods] = get_irf_periods(self)
             irf_periods = self.user_inputs.tab_3.irf_periods;
             if ~(ischar(irf_periods) || iu.is_integer(irf_periods))
+                error(['Type error for irf periods. Should be integer.']);
+            end
+            if ismember(self.model, [2]) && self.irf && isempty(irf_periods)
                 error(['Type error for irf periods. Should be integer.']);
             end
             if ~iu.is_empty(irf_periods) && ischar(irf_periods)
@@ -440,8 +518,14 @@ classdef InputProcessor < handle & RegressionProcessor
         
         function [structural_identification] = get_structural_identification(self)
             structural_identification = self.user_inputs.tab_3.structural_identification;
-            if ~ismember(structural_identification, [1 2])
-                error(['Value error for structural identification. Should be 1 or 2.']);
+            if ~ismember(structural_identification, [1 2 3 4])
+                error(['Value error for structural identification. Should be 1, 2, 3 or 4.']);
+            end
+            if self.user_inputs.tab_2_var.var_type == 1 && ~ismember(structural_identification, [1 2 3])
+                error(['Value error for structural identification. Identification by restriction is not available for maximum likelihood VAR.']);            
+            end
+            if self.user_inputs.tab_2_var.var_type == 7 && ~ismember(structural_identification, [1 4])
+                error(['Value error for structural identification. Should be 1 (none) or 4 (restrictions) when selecting a proxy SVAR.']);            
             end
         end
         
@@ -452,13 +536,84 @@ classdef InputProcessor < handle & RegressionProcessor
                 error(['Type error for structural identification file. Should be char.']);
             end
             structural_identification_file = iu.fix_char(structural_identification_file);
-        end        
-        
-        
+        end   
+
+
+        function make_general_information(self)
+            % get estimation start date
+            estimation_start = datestr(self.estimation_start, 'yyyy-mm-dd hh:MM:ss');
+            self.results_information.estimation_start = estimation_start;
+            % get estimation start date
+            estimation_end = datestr(self.estimation_end, 'yyyy-mm-dd hh:MM:ss');
+            self.results_information.estimation_end = estimation_end;
+            % get endogenous variable
+            self.results_information.endogenous_variables = self.endogenous_variables;
+            % get exogenous variables
+            if isequal(self.exogenous_variables,"")
+                self.results_information.exogenous_variables = "none";
+            else
+                self.results_information.exogenous_variables = self.exogenous_variables;
+            end
+            % get sample start date
+            self.results_information.sample_start = self.start_date;
+            % get sample end date
+            self.results_information.sample_end = self.end_date;
+            % get data frequency
+            if self.frequency == 1
+                frequency = 'cross-sectional/undated';
+            elseif self.frequency == 2
+                frequency = 'annual';         
+            elseif self.frequency == 3
+                frequency = 'quarterly';   
+            elseif self.frequency == 4
+                frequency = 'monthly';   
+            elseif self.frequency == 5
+                frequency = 'weekly';   
+            elseif self.frequency == 6
+                frequency = 'daily'; 
+            end
+            self.results_information.frequency = frequency;  
+            % get path to project folder
+            self.results_information.project_path = self.project_path;
+            % get data file
+            self.results_information.data_file = self.data_file;
+            % get progress bar
+            self.results_information.progress_bar = self.progress_bar;
+            % get graphics and figures
+            self.results_information.create_graphics = self.create_graphics;
+            % get result save
+            self.results_information.save_results = self.save_results;
+        end
+
+
+        function make_application_information(self)
+            % forecasts
+            self.results_information.forecast = self.forecast;
+            self.results_information.forecast_credibility = self.forecast_credibility;
+            % conditional forecasts
+            self.results_information.conditional_forecast = self.conditional_forecast;
+            self.results_information.conditional_forecast_credibility = self.conditional_forecast_credibility;
+            % irf
+            self.results_information.irf = self.irf;
+            self.results_information.irf_credibility = self.irf_credibility;       
+            % fevd
+            self.results_information.fevd = self.fevd;
+            self.results_information.fevd_credibility = self.fevd_credibility; 
+            % fevd
+            self.results_information.hd = self.hd;
+            self.results_information.hd_credibility = self.hd_credibility; 
+            % forecast specifications
+            self.results_information.forecast_periods = self.forecast_periods;
+            self.results_information.conditional_forecast_type = self.conditional_forecast_type;
+            self.results_information.forecast_file = self.forecast_file;
+            self.results_information.conditional_forecast_file = self.conditional_forecast_file;
+            self.results_information.forecast_evaluation = self.forecast_evaluation;
+            % irf specifications
+            self.results_information.irf_periods = self.irf_periods;
+            self.results_information.structural_identification = self.structural_identification;
+            self.results_information.structural_identification_file = self.structural_identification_file;
+        end
+
     end
     
-    
 end
-
-        
-

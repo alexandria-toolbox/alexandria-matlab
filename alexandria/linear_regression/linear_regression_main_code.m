@@ -2,12 +2,13 @@ function [lr] = linear_regression_main_code(user_inputs)
     
 
     %---------------------------------------------------
-    % Result Initialization and Alexandria header
+    % Alexandria header and estimation start
     %--------------------------------------------------- 
 
 
-    % initiate regression results
-    res = RegressionResults();
+    % display Alexandria header
+    cu.print_alexandria_header();
+    cu.print_start_message();
     
     
     %---------------------------------------------------
@@ -68,17 +69,11 @@ function [lr] = linear_regression_main_code(user_inputs)
     y_p = ip.y_p;
     X_p = ip.X_p;
     Z_p = ip.Z_p;
-    
 
-    %---------------------------------------------------
-    % Result file creation
-    %---------------------------------------------------  
-    
-    
-    % initiate regression results
-    res.create_result_file(project_path, save_results);
-    
-    
+    % initialize timer
+    ip.input_timer('start');
+
+
     %---------------------------------------------------
     % Model creation
     %---------------------------------------------------     
@@ -88,19 +83,24 @@ function [lr] = linear_regression_main_code(user_inputs)
     if regression_type == 1
         lr = MaximumLikelihoodRegression(endogenous, exogenous, 'constant', constant, 'trend' , trend, ...
              'quadratic_trend' , quadratic_trend, 'credibility_level' , model_credibility, 'verbose' , progress_bar);
+         
     % simple Bayesian regression
     elseif regression_type == 2
         lr = SimpleBayesianRegression(endogenous, exogenous, 'constant' , constant, 'trend' , trend, ...
              'quadratic_trend' , quadratic_trend, 'b_exogenous' , b, 'V_exogenous' , V, 'b_constant' , b_constant, ...
              'V_constant' , V_constant, 'b_trend' , b_trend, 'V_trend' , V_trend, 'b_quadratic_trend' , b_quadratic_trend, ...
-             'V_quadratic_trend' , V_quadratic_trend, 'credibility_level' , model_credibility, 'verbose' , progress_bar);
+             'V_quadratic_trend' , V_quadratic_trend, 'hyperparameter_optimization', hyperparameter_optimization,...
+             'optimization_type', optimization_type, 'credibility_level' , model_credibility, 'verbose' , progress_bar);
+         
     % hierarchical Bayesian regression
     elseif regression_type == 3
         lr = HierarchicalBayesianRegression(endogenous, exogenous, 'constant' , constant, 'trend' , trend, ...
              'quadratic_trend' , quadratic_trend, 'b_exogenous' , b, 'V_exogenous' , V, 'b_constant' , b_constant, ...
              'V_constant' , V_constant, 'b_trend' , b_trend, 'V_trend' , V_trend, 'b_quadratic_trend' , b_quadratic_trend, ...
-             'V_quadratic_trend' , V_quadratic_trend, 'alpha' , alpha, 'delta' , delta, 'credibility_level' , model_credibility, ...
-             'verbose' , progress_bar);
+             'V_quadratic_trend' , V_quadratic_trend, 'alpha' , alpha, 'delta' , delta, ...
+             'hyperparameter_optimization', hyperparameter_optimization, 'optimization_type', optimization_type, ...
+             'credibility_level', model_credibility, 'verbose' , progress_bar);
+         
     % independent Bayesian regression
     elseif regression_type == 4
         lr = IndependentBayesianRegression(endogenous, exogenous, 'constant' , constant, 'trend' , trend, ...
@@ -108,6 +108,7 @@ function [lr] = linear_regression_main_code(user_inputs)
              'V_constant' , V_constant, 'b_trend' , b_trend, 'V_trend' , V_trend, 'b_quadratic_trend' , b_quadratic_trend, ...
              'V_quadratic_trend' , V_quadratic_trend, 'alpha' , alpha, 'delta' , delta, 'iterations' , iterations, ...
              'burn' , burnin, 'credibility_level' , model_credibility, 'verbose' , progress_bar);
+         
     % heteroscedastic Bayesian regression
     elseif regression_type == 5
         lr = HeteroscedasticBayesianRegression(endogenous, exogenous, 'heteroscedastic' , Z, ...
@@ -117,6 +118,7 @@ function [lr] = linear_regression_main_code(user_inputs)
             'alpha' , alpha, 'delta' , delta, 'g' , g, 'Q' , Q, 'tau' , tau, 'iterations' , iterations, ...
             'burn' , burnin, 'thinning' , thinning, 'thinning_frequency' , thinning_frequency, ...
             'credibility_level' , model_credibility, 'verbose' , progress_bar);
+        
     % autocorrelated Bayesian regression
     elseif regression_type == 6
         lr = AutocorrelatedBayesianRegression(endogenous, exogenous, 'q' , q, 'constant' , constant, ...
@@ -127,17 +129,6 @@ function [lr] = linear_regression_main_code(user_inputs)
             'burn' , burnin, 'credibility_level' , model_credibility, 'verbose' , progress_bar);
     end
             
-    
-    %---------------------------------------------------
-    % Model optimization
-    %---------------------------------------------------     
-    
-    
-    % apply if regression is simple Bayesian or hierarchical, and optimization is selected
-    if (regression_type == 2 || regression_type == 3) && hyperparameter_optimization
-        lr.optimize_hyperparameters(optimization_type);
-    end
-    
 
     %---------------------------------------------------
     % Model estimation
@@ -155,7 +146,7 @@ function [lr] = linear_regression_main_code(user_inputs)
     
     % apply if in-sample fit and residuals is selected
     if insample_fit
-        lr.fit_and_residuals();
+        lr.insample_fit();
     end
     
     
@@ -188,22 +179,59 @@ function [lr] = linear_regression_main_code(user_inputs)
         end
     end
     
+
+    %---------------------------------------------------
+    % Model processor: prepare elements for results
+    %---------------------------------------------------               
+         
     
+    % print estimation completion
+    cu.print_completion_message(progress_bar);
+
+    % end estimation timer
+    ip.input_timer('end');
+
+    % make information dictionary for result class
+    ip.make_results_information();
+    results_information = ip.results_information;
+    
+    % make information dictionary for graphics class
+    ip.make_graphics_information();
+    graphics_information = ip.graphics_information;
+
+
     %---------------------------------------------------
     % Model results: create, display and save
     %---------------------------------------------------               
             
-            
-    % create, display and save result summary
-    res.result_summary(ip, lr);   
+
+    % recover path to result folder
+    results_path = fullfile(project_path, 'results');
     
-    % create and save model settings
-    res.settings_summary(); 
-    
-    % create and save model applications
-    res.application_summary();
-    
-    
+    % initialize results class
+    % res = Results(lr);
+    res = Results(lr, 'complementary_information', results_information);
+
+    % create and save input summary if relevant
+    if save_results
+        res.make_input_summary();
+        res.save_input_summary(results_path);
+    end
+
+    % create, show and save estimation summary if relevant
+    res.make_estimation_summary();
+    res.show_estimation_summary();
+    if save_results
+        res.save_estimation_summary(results_path);
+    end
+
+    % create and save application summary if relevant
+    if save_results
+        res.make_application_summary();
+        res.save_application_summary(results_path);
+    end
+
+
     %---------------------------------------------------
     % Model graphics: generate and save
     %---------------------------------------------------
@@ -211,13 +239,18 @@ function [lr] = linear_regression_main_code(user_inputs)
 
     % if graphic selection is selected
     if create_graphics
-        
-        % initiate graphic creation
-        rg = RegressionGraphics(ip, lr);
-        
-        % generate graphics
-        rg.make_graphics();
-        
+
+        % recover path to result folder
+        graphics_path = fullfile(project_path, 'graphics');
+
+        % initialize graphics class
+        grp = Graphics(lr, 'complementary_information', graphics_information, ...
+                       'path', graphics_path, 'clear_folder', true);
+
+        % run graphics for all applications inturn
+        grp.insample_fit_graphics(false, true);
+        grp.forecast_graphics(false, true);
+
         % display graphics
         gui = GraphicalUserInterface('view_graphics', true);
         
