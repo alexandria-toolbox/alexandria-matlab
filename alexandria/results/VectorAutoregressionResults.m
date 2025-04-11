@@ -52,7 +52,8 @@ classdef VectorAutoregressionResults < handle
             end
             % forecast dates
             if ~isfield(self.complementary_information, 'forecast_dates')
-                if ~isempty(self.model.forecast_estimates) || ~isempty(self.model.conditional_forecast_estimates)
+                if ~isempty(self.model.forecast_estimates) || (isfield(self.model, 'conditional_forecast_estimates') ...
+                    && ~isempty(self.model.conditional_forecast_estimates))
                     f_periods = size(self.model.forecast_estimates,1);
                     T = self.model.T;
                     self.complementary_information.forecast_dates = (T+1:T+f_periods)';
