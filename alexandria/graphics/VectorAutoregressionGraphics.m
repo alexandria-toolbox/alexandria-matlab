@@ -55,6 +55,13 @@ classdef VectorAutoregressionGraphics < handle
                 forecast_dates = (T+1:T+forecast_periods)';
                 self.complementary_information.forecast_dates = forecast_dates;
             end
+            % conditional forecast_dates
+            if ~isempty(self.model.conditional_forecast_estimates) && ~isfield(self.complementary_information, 'conditional_forecast_dates')
+                T = self.model.T;
+                forecast_periods = size(self.model.conditional_forecast_estimates,1);
+                forecast_dates = (T+1:T+forecast_periods)';
+                self.complementary_information.conditional_forecast_dates = forecast_dates;
+            end  
             % actual
             if ~isfield(self.complementary_information, 'Y_p')
                 self.complementary_information.Y_p = [];
@@ -187,23 +194,17 @@ classdef VectorAutoregressionGraphics < handle
 
 
         function var_conditional_forecasts(self, show, save)
-            if (isprop(self.model,'conditional_forecast_estimates') || ...
-                isprop(self.model,'structural_conditional_forecast_estimates')) && ...
-               (~isempty(self.model.conditional_forecast_estimates) || ...
-                ~isempty(self.model.structural_conditional_forecast_estimates))
+            if isprop(self.model,'conditional_forecast_estimates') && ...
+               ~isempty(self.model.conditional_forecast_estimates)
                 % recover graphics elements
                 n = self.model.n;
                 p = self.model.p;
                 actual = self.model.Y;
-                if ~isempty(self.model.conditional_forecast_estimates)
-                    forecasts = permute(self.model.conditional_forecast_estimates, [1 3 2]);
-                elseif ~isempty(self.model.structural_conditional_forecast_estimates)
-                    forecasts = permute(self.model.structural_conditional_forecast_estimates, [1 3 2]);
-                end
+                forecasts = permute(self.model.conditional_forecast_estimates, [1 3 2]);
                 Y_p = self.complementary_information.Y_p;
                 Y_p_i = [];
                 dates = self.complementary_information.dates(p+1:end);
-                forecast_dates = self.complementary_information.forecast_dates;
+                forecast_dates = self.complementary_information.conditional_forecast_dates;
                 path = self.path;
                 endogenous = self.complementary_information.endogenous_variables;
                 % produce individual graphs
