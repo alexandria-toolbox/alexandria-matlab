@@ -1201,7 +1201,7 @@ classdef vu
                     K(variable,variable,i) = 100;
                 end
             end
-            Upsilon_00 = zeros(n*p,n*p);
+            Upsilon_00 = 1e-10 * eye(n*p);
             Upsilon_00(1:n,1:n) = Sigma;
         end
         
