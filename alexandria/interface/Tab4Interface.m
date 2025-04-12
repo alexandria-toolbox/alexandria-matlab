@@ -563,7 +563,7 @@ classdef Tab4Interface < handle
             possible_applications = ["fit", "residuals", "shocks", "steady_state", "forecasts", ...
                                      "conditional_forecasts", "irf", "fevd", "hd"];
             for i=1:numel(possible_applications)
-                if any(contains(applications, possible_applications(i)))
+                if ismember(possible_applications(i), applications)
                     sorted_applications = [sorted_applications possible_applications(i)];
                 end
             end

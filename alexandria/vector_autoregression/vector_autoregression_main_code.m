@@ -253,10 +253,9 @@ function [var] = vector_autoregression_main_code(user_inputs)
 
     % estimate conditional forecast, if selected
     if var_type ~= 1 && conditional_forecast && conditional_forecast_type == 1
-        var.conditional_forecast(forecast_periods, conditional_forecast_credibility, condition_table, Z_p);
+        var.conditional_forecast(forecast_periods, conditional_forecast_credibility, condition_table, [], 1, Z_p);
     elseif var_type ~= 1 && conditional_forecast && conditional_forecast_type == 2
-        var.structural_conditional_forecast(forecast_periods, ...
-        conditional_forecast_credibility, condition_table, shock_table, Z_p);
+        var.conditional_forecast(forecast_periods, conditional_forecast_credibility, condition_table, shock_table, 2, Z_p) ;
     end
 
 
