@@ -150,6 +150,7 @@ classdef VectorAutoregressionProcessor < handle
             self.results_information.dates = self.var_dates;
             % get forecast dates
             self.results_information.forecast_dates = self.var_forecast_dates;
+            self.results_information.conditional_forecast_dates = self.var_forecast_dates;
             % get proxy variables for proxy SVAR
             if self.var_type == 7
                 self.results_information.proxy_variables = self.proxy_variables;
@@ -184,6 +185,7 @@ classdef VectorAutoregressionProcessor < handle
             self.graphics_information.dates = self.var_dates;
             % get forecast dates
             self.graphics_information.forecast_dates = self.var_forecast_dates;
+            self.graphics_information.conditional_forecast_dates = self.var_forecast_dates;
             % get actual data for forecast evaluation, if available
             self.graphics_information.Y_p = self.var_Y_p;
         end

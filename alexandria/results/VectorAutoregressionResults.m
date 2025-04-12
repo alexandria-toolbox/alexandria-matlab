@@ -62,7 +62,7 @@ classdef VectorAutoregressionResults < handle
             end
             % conditional forecast dates
             if ~isfield(self.complementary_information, 'conditional_forecast_dates')
-                if isfield(self.model, 'conditional_forecast_estimates') && ~isempty(self.model.conditional_forecast_estimates)
+                if isprop(self.model, 'conditional_forecast_estimates') && ~isempty(self.model.conditional_forecast_estimates)
                     f_periods = size(self.model.conditional_forecast_estimates,1);
                     T = self.model.T;
                     self.complementary_information.conditional_forecast_dates = (T+1:T+f_periods)';
@@ -695,10 +695,8 @@ classdef VectorAutoregressionResults < handle
                 p = self.model.p;
                 Y = self.model.Y;
                 insample_index = self.complementary_information.dates(p+1:end);
-                if ~isempty(self.model.conditional_forecast_estimates)
-                    forecasts = self.model.conditional_forecast_estimates;
-                end
-                forecast_index = self.complementary_information.forecast_dates;
+                forecast_index = self.complementary_information.conditional_forecast_dates;
+                forecasts = self.model.conditional_forecast_estimates;
                 forecast_table = table([insample_index;forecast_index]);
                 for i=1:n
                     variable = char(endogenous_variables(i));

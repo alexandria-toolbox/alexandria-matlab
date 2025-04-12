@@ -332,13 +332,6 @@ classdef NormalWishartBayesianVar < handle & VectorAutoRegression & BayesianVar
     %     posterior estimates of conditional forecast, defined in section 14.1
     %     page 1: median, page 2: lower bound, page 3: upper bound
     %
-    % mcmc_structural_conditional_forecasts : matrix of size (f_periods,n,iterations)
-    %     MCMC values of structural conditional forecasts, defined in section 14.2
-    %
-    % structural_conditional_forecast_estimates : matrix of size (f_periods,n,3)
-    %     structural conditional forecast estimates, defined in section 14.2
-    %     page 1: median, page 2: lower bound, page 3: upper bound
-    %
     % H_estimates : matrix of size (n,n)
     %     posterior estimates of structural matrix, defined in section 13.2
     %
@@ -357,7 +350,6 @@ classdef NormalWishartBayesianVar < handle & VectorAutoRegression & BayesianVar
     % forecast_error_variance_decomposition
     % historical_decomposition
     % conditional_forecast
-    % structural_conditional_forecast
 
 
     %---------------------------------------------------
