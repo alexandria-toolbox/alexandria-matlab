@@ -598,7 +598,7 @@ classdef VectorAutoregressionResults < handle
                 theil_u = forecast_evaluation_criteria.theil_u;
                 bias = forecast_evaluation_criteria.bias;
                 for i=1:self.model.n
-                    lines = [lines;cu.forecast_evaluation_line(endogenous_variables(i), ...
+                    lines = [lines;cu.forecast_evaluation_line(char(endogenous_variables(i)), ...
                                  rmse(i), mae(i), mape(i), theil_u(i), bias(i))];
                 end
                 % Bayesian criteria: log score

@@ -596,12 +596,12 @@ classdef cu
             dimension = min(size(Sigma,1), 6);
             header_line = repmat(' ', 1, 10);
             for i=1:dimension
-                header_line = [header_line sprintf('%+11s', cu.shorten_string(endogenous_variables(i), 10))];
+                header_line = [header_line sprintf('%+11s', cu.shorten_string(char(endogenous_variables(i)), 10))];
             end
             header_line = cu.string_line(header_line);
             lines = [lines;header_line];
             for i=1:dimension
-                current_line = sprintf('%-10s', cu.shorten_string(endogenous_variables(i), 10));
+                current_line = sprintf('%-10s', cu.shorten_string(char(endogenous_variables(i)), 10));
                 for j=1:dimension
                     current_line = [current_line ' ' cu.format_number(Sigma(i,j))];
                 end
@@ -688,7 +688,7 @@ classdef cu
             header_line = cu.string_line(header_line);
             lines = [lines;header_line];
             for i=1:numel(endogenous_variables)
-                line = sprintf('%-10s', cu.shorten_string(endogenous_variables(i), 10));
+                line = sprintf('%-10s', cu.shorten_string(char(endogenous_variables(i)), 10));
                 for j=1:dimension
                     value = log_score(j,i);
                     line = [line ' ' cu.format_number(value)];

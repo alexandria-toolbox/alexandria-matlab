@@ -1048,7 +1048,7 @@ classdef gu
                     box off;
                     % title
                     name = char(variables(i));
-                    shock = char(shocks(i));
+                    shock = char(shocks(j));
                     title(['IRF: ' name '\_' shock], 'FontWeight', 'bold','FontSize',14,'FontName','Serif');
                     % command to preserve grey background color when saving as image
                     fig.InvertHardcopy = 'off';
