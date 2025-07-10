@@ -672,6 +672,7 @@ classdef IndependentBayesianVar < handle & VectorAutoRegression & BayesianVar
             
             % set initial value for inverse of Sigma: use S for simplicity
             inv_Sigma = diag(1 ./ S);
+            S = diag(S);
             
             % iterate over iterations
             iteration = 1;
