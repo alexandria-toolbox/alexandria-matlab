@@ -257,7 +257,7 @@ classdef BayesianVar < handle
                 % establish type of shocks
                 shock_type = self.check_shock_type(h, conditions, shocks);
                 % get structural conditional forecasts
-                self.make_structural_conditional_forecast(h, conditions, shocks, Z_p, condition_type);
+                self.make_structural_conditional_forecast(h, conditions, shocks, Z_p, shock_type);
             end
             % obtain posterior estimates
             self.conditional_forecast_posterior_estimates(credibility_level);
