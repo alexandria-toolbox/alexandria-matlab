@@ -846,9 +846,9 @@ classdef BayesianVar < handle
             else
                 % identify shocks
                 if sum(shocks) == self.n
-                    condition_type = 'all_shocks';
+                    shock_type = 'all_shocks';
                 else
-                    condition_type = 'shock-specific';  
+                    shock_type = 'shock-specific';  
                 end
             end
         end
