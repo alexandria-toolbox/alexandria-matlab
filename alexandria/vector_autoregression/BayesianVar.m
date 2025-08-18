@@ -870,7 +870,7 @@ classdef BayesianVar < handle
                 has_irf = ~isempty(self.mcmc_structural_irf) && size(self.mcmc_structural_irf, 3) >= h;
                 % make conditional forecast regressors R, y_bar and omega
                 [R y_bar omega] = vu.conditional_forecast_regressors_3(conditions, h, self.n);
-                if isequal(condition_type, 'shock-specific')
+                if isequal(shock_type, 'shock-specific')
                     [P non_generating] = vu.conditional_forecast_regressors_5(shocks, h, self.n);
                 end
                 % initiate storage and loop over iterations
@@ -889,9 +889,9 @@ classdef BayesianVar < handle
                     % recover iteration-specific regressors
                     M = vu.conditional_forecast_regressors_4(structural_irf, self.n, h);
                     % get posterior mean and variance, depending on condition type    
-                    if isequal(condition_type, 'all_shocks')
+                    if isequal(shock_type, 'all_shocks')
                         [mu_hat Omega_hat] = vu.conditional_forecast_posterior(y_bar, f, M, R, self.mcmc_Gamma(i,:)', omega, self.n, h);
-                    elseif isequal(condition_type, 'shock-specific')
+                    elseif isequal(shock_type, 'shock-specific')
                         Gamma_nd = vu.conditional_forecast_regressors_6(self.mcmc_Gamma(i,:)', non_generating, h);                      
                         [mu_hat Omega_hat] = vu.shock_specific_conditional_forecast_posterior(...
                                              y_bar, f, M, R, P, self.mcmc_Gamma(i,:)', Gamma_nd, omega, self.n, h);  
