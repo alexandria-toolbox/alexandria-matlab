@@ -902,7 +902,7 @@ classdef BayesianVar < handle
                         cu.progress_bar(i, self.iterations, 'Conditional forecasts:');
                     end
                 end
-                self.mcmc_conditional_forecast = mcmc_structural_conditional_forecast;
+                self.mcmc_conditional_forecast = mcmc_conditional_forecast;
             end
         end  
 
