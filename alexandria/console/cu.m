@@ -221,7 +221,7 @@ classdef cu
                       "     /_/ /_/ /_/  \___/  /_/\_\ \__,_/ /_/ /_/ \____/ /_/   /_/  \__,_/        "; ...
                       "                                                                               "; ...
                       "     The library of Bayesian time-series models                                "; ...
-                      "     V 1.0 - Copyright Ⓒ  Romain Legrand                                      "; ...
+                      "     V 2.0 - Copyright Ⓒ  Romain Legrand                                      "; ...
                       "   ========================================================================    "; ...
                       "                                                                               "; ...
                       "                                                                               "; ...
@@ -615,8 +615,8 @@ classdef cu
                 current_line = '  ⋮               ⋮          ⋮          ⋮          ⋮          ⋮          ⋮    ⋱ ';
                 lines = [lines;current_line];
                 lines = [lines;repmat(' ', 1, 80)];
-                current_line = ['output is too long, use ' tag ' to obtain full view'];
-                lines = [lines;cu.string_line(current_line)];
+                lines = [lines;cu.string_line(['output is too long'])];
+                lines = [lines;cu.string_line(['use ' tag ' for full view'])];
             end
         end
 
@@ -704,8 +704,8 @@ classdef cu
             end
             if dimension == 6
                 lines = [lines;repmat(' ', 1, 80)];
-                current_line = ['output is too long, use ' tag ' to obtain full view'];
-                lines = [lines;cu.string_line(current_line)];
+                lines = [lines;cu.string_line(['output is too long'])];
+                lines = [lines;cu.string_line(['use ' tag ' for full view'])];
             end
         end
 
@@ -776,6 +776,7 @@ classdef cu
 
             % left-justify the name, with pad to reach 80 characters
             line = sprintf('%-80s', string);
+            line = line(1:80);
         end
      
             

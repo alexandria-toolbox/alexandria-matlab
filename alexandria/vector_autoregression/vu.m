@@ -1196,7 +1196,7 @@ classdef vu
                 K(1:n,1:n,i) = Sigma;
                 temp = conditions(conditions(:,2) == i,:);
                 condition_variables = temp(:,1);
-                for j=1:size(condition_variables)
+                for j=1:size(condition_variables,1)
                     variable = condition_variables(j);
                     K(variable,variable,i) = 100;
                 end
@@ -2047,7 +2047,6 @@ classdef vu
             mcmc_beta = la.vec(B) + la.cholesky_nspd(Q) * randn(q, 500);
             mcmc_B = reshape(mcmc_beta,[k n 500]);
         end
-
 
 
         function [secondary_constrained_coefficients_table] = ...

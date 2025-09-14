@@ -42,6 +42,10 @@ if model == 1
 % else, if model is vector autoregression, run main code for vector autoregression, and return model
 elseif model == 2
     var = vector_autoregression_main_code(user_inputs);
-    
+
+% else, if model is vec/varma, run main code for vector autoregression extension, and return model
+elseif model == 3
+    model = vec_varma_main_code(user_inputs);
+
 end
 

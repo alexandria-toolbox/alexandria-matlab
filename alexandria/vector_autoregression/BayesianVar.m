@@ -419,9 +419,9 @@ classdef BayesianVar < handle
                     mcmc_H(:,:,j) = H;
                     mcmc_inv_H(:,:,j) = la.invert_lower_triangular_matrix(H);
                     mcmc_Gamma(j,:) = Gamma;
-                end
-                if self.verbose
-                    cu.progress_bar(j, self.iterations, 'Structural identification:');
+                    if self.verbose
+                        cu.progress_bar(j, self.iterations, 'Structural identification:');
+                    end
                 end
             end
             self.mcmc_H = mcmc_H;
@@ -544,16 +544,22 @@ classdef BayesianVar < handle
         
         
         function steady_state(self)
-            
-            ss = zeros(self.T,self.n,self.iterations);
-            for j=1:self.iterations
-                ss(:,:,j) = vu.steady_state(self.Z, self.mcmc_beta(:,:,j), self.n, self.m, self.p, self.T);
-                if self.verbose
-                    cu.progress_bar(j, self.iterations, 'Steady-state:');
+
+            % if model is VEC, steady-state cannot be defined from VAR
+            if isequal(class(self),'VectorErrorCorrection')
+                self.steady_state_estimates = vvu.vec_steady_state(self.Y, self.n, self.T);
+            % if model is BVAR, use regular steady-state computation
+            else
+                ss = zeros(self.T,self.n,self.iterations);
+                for j=1:self.iterations
+                    ss(:,:,j) = vu.steady_state(self.Z, self.mcmc_beta(:,:,j), self.n, self.m, self.p, self.T);
+                    if self.verbose
+                        cu.progress_bar(j, self.iterations, 'Steady-state:');
+                    end
                 end
+                ss_estimates = vu.posterior_estimates(ss, self.credibility_level);
+                self.steady_state_estimates = ss_estimates;
             end
-            ss_estimates = vu.posterior_estimates(ss, self.credibility_level);
-            self.steady_state_estimates = ss_estimates;
         end
         
        

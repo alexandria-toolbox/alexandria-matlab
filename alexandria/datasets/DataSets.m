@@ -98,6 +98,43 @@ classdef DataSets < handle
         end
 
 
+        function [data] = load_fdi_table(self)
+
+            % [data] = load_fdi_table()
+            % load the India FDI dataset as a Matlab table
+            %
+            % parameters:
+            % none
+            %
+            % returns:
+            % data : Matlab table
+            %     table containing the FDI dataset
+
+            file_path = self.get_file_path('fdi');
+            opts = detectImportOptions(file_path);
+            opts.VariableTypes{1} = 'char';
+            opts.VariableTypes([2:end]) = {'double'};
+            data = readtable(file_path, opts, 'ReadRowNames',true);
+            data = removevars(data,{'Var1'});
+        end
+        
+        
+        function [data] = load_fdi(self)
+
+            % load_fdi()
+            % load the raw India FDI dataset as a matrix
+            %
+            % parameters:
+            % none
+            %
+            % returns:
+            % data : matrix
+            %     matrix containing the raw data for the FDI dataset
+
+            datatable = self.load_fdi_table();
+            data = table2array(datatable);
+        end
+
     end
 
     

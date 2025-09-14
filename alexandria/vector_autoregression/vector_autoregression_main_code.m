@@ -26,7 +26,7 @@ function [var] = vector_autoregression_main_code(user_inputs)
     create_graphics = ip.create_graphics;
     save_results = ip.save_results; 
     
-    % recover parameters specific to linear regression (interface 2)
+    % recover parameters specific to vector autoregression (interface 2)
     var_type = ip.var_type;
     iterations = ip.var_iterations;
     burnin = ip.var_burnin;

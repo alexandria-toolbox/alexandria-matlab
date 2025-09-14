@@ -1156,7 +1156,7 @@ classdef iu
                         ', shock columns must contain either 1 or 2 non-zero coefficients.']);
                 end
                 if isequal(restriction_type,'covariance') && var_type ~= 7
-                    error(['Data error for file ' file '. Covariance restriction found in row ' num2str(i) ', but VAR type is not proxy-SVAR.']);
+                    error(['Data error for file ' file '. Covariance restriction found in row ' num2str(i) ', but model is not proxy-SVAR.']);
                 elseif isequal(restriction_type,'covariance') && var_type == 7
                     for j=1:(number_endogenous-number_proxys)
                         shock = table2array(data(i,3+j));
@@ -1285,7 +1285,15 @@ classdef iu
             elseif isequal(class_name, 'BayesianProxySvar')
                 model_name = 'Bayesian Proxy Svar';
                 model_class = 2;
-                model_type = 7;               
+                model_type = 7; 
+            elseif isequal(class_name, 'VectorErrorCorrection')
+                model_name = 'Bayesian Vector Error Correction';
+                model_class = 3;
+                model_type = 1;
+            elseif isequal(class_name, 'VectorAutoregressiveMovingAverage')
+                model_name = 'Bayesian Vector Autoregressive Moving Average';
+                model_class = 3;
+                model_type = 2;
             end
         end
         

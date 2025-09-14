@@ -23,6 +23,7 @@ classdef DefaultInputInterface < handle
             user_inputs.tab_1 = struct;
             user_inputs.tab_2_lr = struct;
             user_inputs.tab_2_var = struct;
+            user_inputs.tab_2_ext = struct;
             user_inputs.tab_3 = struct;
 
             % default values for tab 1
@@ -99,7 +100,34 @@ classdef DefaultInputInterface < handle
             user_inputs.tab_2_var.hyperparameter_optimization = false; 
             user_inputs.tab_2_var.coefficients_file = ''; 
             user_inputs.tab_2_var.long_run_file = ''; 
-            
+
+            % default values for tab 2, VEC/VARMA (VAR extensions)
+            user_inputs.tab_2_ext.model = 1;
+            user_inputs.tab_2_ext.iterations = '3000';
+            user_inputs.tab_2_ext.burnin = '1000';
+            user_inputs.tab_2_ext.model_credibility = '0.95';
+            user_inputs.tab_2_ext.constant = true;
+            user_inputs.tab_2_ext.trend = false;
+            user_inputs.tab_2_ext.quadratic_trend = false;
+            user_inputs.tab_2_ext.vec_lags = '4';
+            user_inputs.tab_2_ext.vec_pi1 = '0.1';
+            user_inputs.tab_2_ext.vec_pi2 = '0.5';
+            user_inputs.tab_2_ext.vec_pi3 = '1';
+            user_inputs.tab_2_ext.vec_pi4 = '100';
+            user_inputs.tab_2_ext.prior_type = 1;
+            user_inputs.tab_2_ext.error_correction_type = 1;
+            user_inputs.tab_2_ext.max_cointegration_rank = '1';
+            user_inputs.tab_2_ext.varma_lags = '4';
+            user_inputs.tab_2_ext.ar_coefficients = '0.95';
+            user_inputs.tab_2_ext.varma_pi1 = '0.1';
+            user_inputs.tab_2_ext.varma_pi2 = '0.5';
+            user_inputs.tab_2_ext.varma_pi3 = '1';
+            user_inputs.tab_2_ext.varma_pi4 = '100';
+            user_inputs.tab_2_ext.residual_lags = '1';
+            user_inputs.tab_2_ext.lambda1 = '0.1';
+            user_inputs.tab_2_ext.lambda2 = '0.5';
+            user_inputs.tab_2_ext.lambda3 = '1'; 
+
             % default values for tab 3
             user_inputs.tab_3.forecast = false;
             user_inputs.tab_3.conditional_forecast = false;

@@ -1,4 +1,5 @@
-classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionProcessor
+classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionProcessor ...
+                          & VecVarmaProcessor
     
     
     properties (GetAccess = public, SetAccess= protected)
@@ -37,7 +38,8 @@ classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionPro
     end    
 
 
-    properties (GetAccess = public, SetAccess = {?RegressionProcessor, ?VectorAutoregressionProcessor})
+    properties (GetAccess = public, SetAccess = {?RegressionProcessor, ...
+                ?VectorAutoregressionProcessor, ?VecVarmaProcessor})
         results_information
         graphics_information
     end
@@ -89,6 +91,9 @@ classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionPro
             % if model is model 2, additionally make information for VAR models
             elseif self.model == 2
                 self.make_var_information();
+            % if model is model 3, additionally make information for VEC/VARMA models
+            elseif self.model == 3
+                self.make_vec_varma_information();                
             end
             % finally add complementary information for applications
             self.make_application_information();
@@ -112,6 +117,9 @@ classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionPro
             % if model is model 2, additionally make information for vector autoregression
             elseif self.model == 2
                 self.make_var_graphics_information();
+            % if model is model 3, additionally make information for VEC/VARMA
+            elseif self.model == 3
+                self.make_vec_varma_graphics_information();                
             end
         end
 
@@ -158,6 +166,9 @@ classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionPro
             % if model is model 2, get user inputs for vector autoregression
             elseif self.model == 2
                 self.vector_autoregression_inputs();
+            % if model is model 3, get user inputs for vec/varma
+            elseif self.model == 3
+                self.vec_varma_inputs();                
             end
         end
             
@@ -209,14 +220,17 @@ classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionPro
             % else, if model is model 2, get data for vector autoregression
             elseif self.model == 2
                 self.vector_autoregression_data();
+            % else, if model is model 3, get data for vec/varma
+            elseif self.model == 3
+                self.vec_varma_data();
             end
         end
         
         
         function [model] = get_model(self)
         model = self.user_inputs.tab_1.model;
-            if ~ismember(model, [1 2])
-                error(['Value error for model. Should be 1 or 2.']);
+            if ~ismember(model, [1 2 3])
+                error(['Value error for model. Should be 1, 2 or 3.']);
             end
         end
         
@@ -521,10 +535,10 @@ classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionPro
             if ~ismember(structural_identification, [1 2 3 4])
                 error(['Value error for structural identification. Should be 1, 2, 3 or 4.']);
             end
-            if self.user_inputs.tab_2_var.var_type == 1 && ~ismember(structural_identification, [1 2 3])
+            if self.model == 2 && self.user_inputs.tab_2_var.var_type == 1 && ~ismember(structural_identification, [1 2 3])
                 error(['Value error for structural identification. Identification by restriction is not available for maximum likelihood VAR.']);            
             end
-            if self.user_inputs.tab_2_var.var_type == 7 && ~ismember(structural_identification, [1 4])
+            if self.model == 2 && self.user_inputs.tab_2_var.var_type == 7 && ~ismember(structural_identification, [1 4])
                 error(['Value error for structural identification. Should be 1 (none) or 4 (restrictions) when selecting a proxy SVAR.']);            
             end
         end

@@ -51,12 +51,13 @@ classdef Graphics < handle & RegressionGraphics & VectorAutoregressionGraphics
         
 
         function insample_fit_graphics(self, show, save)
+            model_class = self.complementary_information.model_class;
             % if model is linear regression, make regression insample graphics
-            if self.complementary_information.model_class == 1
+            if model_class == 1
                 self.regression_fitted(show, save);
                 self.regression_residuals(show, save);
             % if model is vector autoregression, make VAR insample graphics
-            elseif self.complementary_information.model_class == 2
+            elseif model_class == 2 || model_class == 3
                 self.var_fitted(show, save);
                 self.var_residuals(show, save);
                 self.var_shocks(show, save);
@@ -66,43 +67,48 @@ classdef Graphics < handle & RegressionGraphics & VectorAutoregressionGraphics
 
 
         function forecast_graphics(self, show, save)
+            model_class = self.complementary_information.model_class;
             % if model is linear regression, make regression forecast graphics
-            if self.complementary_information.model_class == 1
+            if model_class == 1
                 self.regression_forecasts(show, save);
             % if model is vector autoregression, make VAR forecast graphics
-            elseif self.complementary_information.model_class == 2
+            elseif model_class == 2 || model_class == 3
                 self.var_forecasts(show, save);
             end
         end
 
 
         function conditional_forecast_graphics(self, show, save)
+            model_class = self.complementary_information.model_class;
             % if model is vector autoregression, make VAR forecast graphics
-            if self.complementary_information.model_class == 2
+            if model_class == 2 || model_class == 3
                 self.var_conditional_forecasts(show, save);
             end
         end
 
 
         function irf_graphics(self, show, save)
+            model_class = self.complementary_information.model_class;
             % if model is vector autoregression, make VAR IRF graphics
-            if self.complementary_information.model_class == 2
+            if model_class == 2 || model_class == 3
                 self.var_irf(show, save);
             end
         end
 
 
         function fevd_graphics(self, show, save)
+            model_class = self.complementary_information.model_class;
             % if model is vector autoregression, make VAR FEVD graphics
-            if self.complementary_information.model_class == 2
+            if model_class == 2 || model_class == 3
                 self.var_fevd(show, save);
             end
         end
 
 
         function hd_graphics(self, show, save)
+            model_class = self.complementary_information.model_class;
             % if model is vector autoregression, make VAR HD graphics
-            if self.complementary_information.model_class == 2
+            if model_class == 2 || model_class == 3
                 self.var_hd(show, save);
             end
         end
@@ -139,6 +145,9 @@ classdef Graphics < handle & RegressionGraphics & VectorAutoregressionGraphics
             % if model is vecto autoregression, add var elements
             elseif self.complementary_information.model_class == 2
                 self.complete_var_information();
+            % if model is VEC/VARMA, add var elements (vec and varma just recycle VAR functions)
+            elseif self.complementary_information.model_class == 3
+                self.complete_var_information();               
             end
         end
 

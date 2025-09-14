@@ -1,4 +1,5 @@
-classdef Results < handle & RegressionResults & VectorAutoregressionResults
+classdef Results < handle & RegressionResults & VectorAutoregressionResults ...
+                   & VecVarmaResults
     
     
     %---------------------------------------------------
@@ -6,13 +7,15 @@ classdef Results < handle & RegressionResults & VectorAutoregressionResults
     %---------------------------------------------------    
     
     
-    properties (GetAccess = public, SetAccess = {?RegressionResults, ?VectorAutoregressionResults})
+    properties (GetAccess = public, SetAccess = {?RegressionResults, ?VectorAutoregressionResults, ...
+                                                 ?VecVarmaResults})
         model
         complementary_information
     end    
 
 
-    properties (GetAccess = public, SetAccess = {?RegressionResults, ?VectorAutoregressionResults})
+    properties (GetAccess = public, SetAccess = {?RegressionResults, ?VectorAutoregressionResults, ...
+                                                 ?VecVarmaResults})
         input_summary
         estimation_summary
         application_summary
@@ -80,6 +83,9 @@ classdef Results < handle & RegressionResults & VectorAutoregressionResults
             % if model is vector autoregression, make VAR summary
             elseif model_class == 2
                 self.make_var_summary();
+            % if model is VEC/VARMA, make VAR extension summary
+            elseif model_class == 3
+                self.make_vec_varma_summary();                
             end
         end
 
@@ -112,6 +118,9 @@ classdef Results < handle & RegressionResults & VectorAutoregressionResults
             % if model is vector autoregression, make VAR summary
             elseif model_class == 2
                 self.make_var_application_summary();
+            % if model is VEC/VARMA, make VAR extension summary
+            elseif model_class == 3
+                self.make_vec_varma_application_summary();                
             end
         end
 
@@ -127,6 +136,9 @@ classdef Results < handle & RegressionResults & VectorAutoregressionResults
             % if model is vector autoregression, save regression summary
             elseif model_class == 2
                 self.save_var_application(path);
+            % if model is VEC/VARMA, save VAR extension summary
+            elseif model_class == 3
+                self.save_vec_varma_application(path);                
             end
         end
 
@@ -145,6 +157,9 @@ classdef Results < handle & RegressionResults & VectorAutoregressionResults
             % if model is vector autoregression, add VAR elements
             elseif self.complementary_information.model_class == 2
                 self.complete_var_information();
+            % if model is VEC/VARMA, add extension elements
+            elseif self.complementary_information.model_class == 3
+                self.complete_vec_varma_information();                
             end
             % add application information
             self.complete_application_information();
@@ -271,6 +286,8 @@ classdef Results < handle & RegressionResults & VectorAutoregressionResults
                 model = 'linear regression';
             elseif model_class == 2
                 model = 'vector autoregression';
+            elseif model_class == 3
+                model = 'vec / varma';                
             end
             lines = [lines;'selected model: ' model];
             % endogenous variables
@@ -323,6 +340,8 @@ classdef Results < handle & RegressionResults & VectorAutoregressionResults
                 self.add_regression_tab_2_inputs();
             elseif self.complementary_information.model_class == 2
                 self.add_var_tab_2_inputs();
+            elseif self.complementary_information.model_class == 3
+                self.add_vec_varma_tab_2_inputs();                
             end
         end
 
@@ -333,6 +352,8 @@ classdef Results < handle & RegressionResults & VectorAutoregressionResults
                 self.add_regression_tab_3_inputs();
             elseif self.complementary_information.model_class == 2
                 self.add_var_tab_3_inputs();
+            elseif self.complementary_information.model_class == 3
+                self.add_vec_varma_tab_3_inputs();                
             end
         end
 

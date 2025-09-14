@@ -434,6 +434,26 @@ classdef rn
 
             x = double(rand <= p);
         end
+
+        
+        function [x] = multivariate_bernoulli(p, n)
+            
+            % multivariate_bernoulli(p, n)
+            % random number generator for a vector of Bernoulli distributions
+            % based on algorithm d.2
+            % 
+            % parameters:
+            % p : matrix of size (n,1)
+            %     probabilities of success (0 <= p <= 1)
+            % n : int 
+            %     dimension of Bernoulli vector     
+            % 
+            % returns:
+            % x : matrix of size (n,1)
+            %     pseudo-random numbers from the Bernoulli distribution
+            
+            x = double(rand(n,1) < p);
+        end
         
         
         function [x] = binomial(n, p)
