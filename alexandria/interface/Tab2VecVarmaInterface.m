@@ -789,8 +789,8 @@ classdef Tab2VecVarmaInterface < handle
             set(self.t2_ext_edt19, 'String', self.user_inputs.tab_2_ext.lambda3);
             set(self.t2_ext_edt19, 'CallBack', @self.cb_t2_ext_edt19);        
             
-            % indicate that tab 2 for vector autoregression is now created
-            self.created_tab_2_var = true;            
+            % indicate that tab 2 for vec/varma is now created
+            self.created_tab_2_ext = true;            
         end
 
         

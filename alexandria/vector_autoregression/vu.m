@@ -1718,7 +1718,8 @@ classdef vu
             % mcmc_shocks : matrix of size (T, n, iterations)
             %     matrix of mcmc values for preliminary structural shocks
 
-            if isempty(restriction_matrices{4,1}) && isempty(restriction_matrices{5,1})
+            if isempty(restriction_matrices{4,1}) && isempty(restriction_matrices{5,1}) ...
+               && isempty(restriction_matrices{6,1}) && isempty(restriction_matrices{7,1}) 
                 mcmc_shocks = [];
             else
                 mcmc_shocks = zeros(T, n, iterations);

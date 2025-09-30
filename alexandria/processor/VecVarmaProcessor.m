@@ -639,7 +639,7 @@ classdef VecVarmaProcessor < handle
                 % check that data path and files are valid
                 iu.check_file_path(self.project_path, self.structural_identification_file);
                 % then load data file
-                data = iu.load_data(self.project_path, self.structural_identification_file);
+                data = iu.load_restriction_data(self.project_path, self.structural_identification_file);
                 % get raw sample dates
                 raw_dates = iu.get_raw_sample_dates(self.project_path, self.data_file, self.start_date, self.end_date);
                 % check data format

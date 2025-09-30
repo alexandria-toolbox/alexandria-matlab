@@ -247,7 +247,38 @@ classdef iu
                 data = removevars(data,{'Var1'});
             end
         end
-        
+
+
+        function [data] = load_restriction_data(path, file)
+            
+            % [data] = load_restriction_data(path, file)
+            % loads restriction data file of type csv, xls or xlsx into Matlab table
+            % 
+            % parameters: 
+            % path : char
+            %     path to folder containing data file
+            % file : char
+            %     name of data file (with extension csv, xls or xlsx)
+            % 
+            % returns:
+            % data : table
+            %     table containing loaded data
+            
+            % make sure path and file strings are properly formatted
+            path = iu.fix_char(path);
+            file = iu.fix_char(file);
+            file_path = fullfile(path, file);
+            % load file
+            options = detectImportOptions(file);
+            options = setvartype(options, {'period'}, 'char');            
+            data = readtable(file_path, options);
+            % create index, if relevant
+            if isequal(data.Properties.VariableNames{1},'Var1')
+                data.Properties.RowNames = string(data{:,'Var1'});
+                data = removevars(data,{'Var1'});
+            end
+        end
+
         
         function check_variables(data, file, variables, tag)
 
@@ -1110,11 +1141,7 @@ classdef iu
             for i = 1:rows
                 restriction_type = char(table2array(data(i,["type"])));
                 variable = char(table2array(data(i,["variable"])));
-                try
-                    period = num2str(table2array(data(i,["period"])));
-                catch
-                    period = char(table2array(data(i,["period"])));
-                end
+                period = char(table2array(data(i,["period"])));
                 if ~ismember(restriction_type, ["sign" "zero" "shock" "historical" "covariance"])
                     error(['Data error for file ' file '. Entry in row ' num2str(i) ...
                     ', column ''type'' does not correspond to one of the allowed restriction types.']);                      
@@ -1196,7 +1223,7 @@ classdef iu
             restriction_table = zeros(rows,columns);
             for i = 1:rows
                 restriction_type = char(table2array(data(i,["type"])));
-                period = char(num2str(table2array(data(i,["period"]))));
+                period = char(table2array(data(i,["period"])));
                 variable = char(table2array(data(i,["variable"])));
                 restriction_table(i,1) = find(strcmp(restriction_types, restriction_type));
                 if isequal(restriction_type,'sign') || isequal(restriction_type,'zero') || isequal(restriction_type,'historical')
