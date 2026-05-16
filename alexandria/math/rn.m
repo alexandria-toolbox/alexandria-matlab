@@ -332,15 +332,174 @@ classdef rn
             X = M + G * Z * H';
         end
         
+
+        function [x] = standard_truncated_normal(a, b)
+            
+            % standard_truncated_normal(a, b)
+            % random number generator for the standard truncated normal distribution
+            % based on algorithm d.22
+            % 
+            % parameters:
+            % a : float
+            %     lower bound of truncation
+            % b : float
+            %     upper bound of truncation (b > a)
+            % 
+            % returns:
+            % x : float
+            %     pseudo-random number from the standard truncated normal distribution 
+
+            if a <= 0 && b >= 0
+                if a < -10 && b > 10
+                    x = randn();
+                elseif b > a + 2.50662
+                    x = rn.tn_normal_rejection(a, b);
+                else
+                    x = rn.tn_uniform_rejection(a, b);
+                end
+            else
+                if a > 0
+                    lb = a;
+                    ub = b;
+                elseif b < 0
+                    lb = -b;
+                    ub = -a;
+                end
+                a0 = 0.257;
+                b1 = lb + 1.2533 * exp(0.5 * lb^2);
+                a1 = sqrt(lb^2 + 4);
+                b2 = lb + 2 / (lb + a1) * exp((lb^2 - lb * a1) / 4 + 0.5);
+                if lb < a0 && ub <= b1
+                    x = rn.tn_uniform_rejection(lb, ub);
+                elseif lb < a0 && ub > b1
+                    x = rn.tn_half_normal_rejection(lb, ub);
+                elseif lb >= a0 && ub <= b2
+                    x = rn.tn_uniform_rejection(lb, ub);
+                elseif lb >= a0 && ub > b2
+                    x = rn.tn_translated_exponential(lb, ub);
+                end
+                if b < 0
+                    x = -x;
+                end
+            end
+        end
+            
+
+        function [x] = tn_normal_rejection(a, b)
+            
+            % tn_normal_rejection(a, b)
+            % truncated standard normal distribution, using normal rejection sampling
+            % 
+            % parameters:
+            % a : float
+            %     lower bound of truncation
+            % b : float
+            %     upper bound of truncation (b > a)
+            % 
+            % returns:
+            % x : float
+            %     pseudo-random number from the standard truncated normal distribution
+
+            while true
+                x = randn();
+                if x >= a && x <= b
+                    break;
+                end
+            end
+        end
+
+
+        function [x] = tn_uniform_rejection(a, b)
+            
+            % tn_normal_rejection(a, b)
+            % truncated standard normal distribution, using uniform rejection sampling
+            % 
+            % parameters:
+            % a : float
+            %     lower bound of truncation
+            % b : float
+            %     upper bound of truncation (b > a)
+            % 
+            % returns:
+            % x : float
+            %     pseudo-random number from the standard truncated normal distribution   
+            
+            if a <= 0 && b >= 0
+                log_m = 0;
+            elseif a > 0
+                log_m = -0.5 * a^2;
+            elseif b < 0
+                log_m = -0.5 * b^2;
+            end
+            while true
+                x = unifrnd(a,b);
+                log_fx = -0.5 * x^2;
+                log_u = log(rand());
+                if log_u <= log_fx - log_m;
+                    break;
+                end
+            end
+        end
+
+
+        function [x] = tn_half_normal_rejection(a, b)
         
+            % tn_normal_rejection(a, b)
+            % truncated standard normal distribution, using half normal rejection sampling
+            % 
+            % parameters:
+            % a : float
+            %     lower bound of truncation
+            % b : float
+            %     upper bound of truncation (b > a)
+            % 
+            % returns:
+            % x : float
+            %     pseudo-random number from the standard truncated normal distribution 
+
+            while true
+                x = abs(randn());
+                if x >= a && x <= b
+                    break;
+                end
+            end
+        end
+
+
+        function [x] = tn_translated_exponential(a, b)
+        
+            % tn_normal_rejection(a, b)
+            % truncated standard normal distribution, using two sided translated exponential sampling
+            % 
+            % parameters:
+            % a : float
+            %     lower bound of truncation
+            % b : float
+            %     upper bound of truncation (b > a)
+            % 
+            % returns:
+            % x : float
+            %     pseudo-random number from the standard truncated normal distribution
+
+            while true
+                z = rn.gamma(1,1/a);
+                x = z + a;
+                log_u = log(rand());
+                if log_u <= (- z^2 / 2) && x <= b
+                    break;
+                end
+            end
+        end
+
+
         function [x] = truncated_normal(mu, sigma, a, b)
             
-            % [x] = truncated_normal(mu, sigma, a, b)
+            % truncated_normal(mu, sigma, a, b)
             % random number generator for the truncated normal distribution
             % based on algorithm d.23
             % 
             % parameters:
-            % mu : float
+            % mu: float
             %     mean of untruncated distribution
             % sigma : float
             %     variance of untruncated distribution (positive)
@@ -353,30 +512,46 @@ classdef rn
             % x : float
             %     pseudo-random number from the truncated normal distribution
 
-            function [x] = standard_truncated_normal(a, b)
-                while true
-                    x = a + (b - a) * rand;
-                    if a <= 0 && b >= 0
-                        w = exp(- x * x / 2);
-                    elseif b < 0
-                        w = exp((b * b - x * x) / 2);
-                    else
-                        w = exp((a * a - x * x) / 2);
-                    end
-                    u = rand;
-                    if u <= w
-                        return
-                    end
-                end
-            end
-
-            standard_deviation = sigma^0.5;
+            standard_deviation = sqrt(sigma);
             a_bar = (a - mu) / standard_deviation;
             b_bar = (b - mu) / standard_deviation;
-            z = standard_truncated_normal(a_bar, b_bar);
+            z = rn.standard_truncated_normal(a_bar, b_bar);
             x = mu + standard_deviation * z;
         end
-        
+                 
+
+        function [x] = truncated_multivariate_normal(mu, Sigma, a, b)
+            
+            % truncated_multivariate_normal(mu, Sigma, a, b)
+            % random number generator for the truncated multivariate normal distribution
+            % based on algorithm d.34
+            % 
+            % parameters:
+            % mu: ndarray of shape (n,)
+            %     location vector
+            % Sigma : ndarray of shape (n,n)
+            %     scale matrix
+            % a : ndarray of shape (n,)
+            %     lower bound of truncation
+            % b : ndarray of shape (n,)
+            %     upper bound of truncation 
+            % 
+            % returns:
+            % x : ndarray of shape (n,)
+            %     pseudo-random number from the truncated multivariate normal distribution
+
+            n = size(mu,1);
+            G = la.cholesky_nspd(Sigma);
+            z = zeros(n,1);
+            for i=1:n
+                s_i = G(i,1:i-1) * z(1:i-1);
+                c_i = (a(i) - mu(i) - s_i) / G(i,i);
+                d_i = (b(i) - mu(i) - s_i) / G(i,i);
+                z(i) = rn.standard_truncated_normal(c_i, d_i);
+            end
+            x = mu + G * z;
+        end
+                    
         
         function [x] = beta(a, b)
             
@@ -733,13 +908,6 @@ classdef rn
     end
   
 end
-
-
-
-
-
-
-
 
 
 

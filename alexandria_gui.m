@@ -47,5 +47,9 @@ elseif model == 2
 elseif model == 3
     model = vec_varma_main_code(user_inputs);
 
+% else, if model is nowcasting, import main code for nowcasting, run it, and return model
+elseif model == 4
+    model = nowcasting_main_code(user_inputs);
+
 end
 

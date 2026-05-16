@@ -386,6 +386,52 @@ classdef iu
             end
         end        
         
+
+        function [sample] = fetch_nan_data(data, file, start_date, end_date, variables, tag)
+            
+            % [sample] = fetch_nan_data(data, file, start_date, end_date, variables, tag)
+            % fetches variables from data at given sample dates
+            %
+            % parameters:
+            % data : table
+            %     dataframe containing loaded data
+            % file : char
+            %     name of data file (with extension csv, xls or xlsx)
+            % start_date : char
+            %     sample start date to search in dataframe index
+            % end_date : char
+            %     sample end date to search in dataframe index    
+            % variables : string array
+            %     array of variables to search in table
+            % tag : char
+            %     tag to apply in error message, if any (e.g. 'Endogenous variables')
+            %
+            % returns:
+            % sample : matrix
+            %     matrix containing fetched data
+            
+            % recover sample dates
+            dates = string(data.Properties.RowNames);
+            start_date_index = find(all(ismember(dates, start_date), 2));
+            end_date_index = find(all(ismember(dates, end_date), 2));
+            dates = dates(start_date_index:end_date_index);
+            % if variable array is not empty, recover sample for given variables and dates
+            if ~iu.is_empty(variables)
+                sample = data(dates, variables);
+                types = convertCharsToStrings(varfun(@class,sample,'OutputFormat','cell'));
+                % test for non-numerical values (strings), and if any, raise error
+                if any(contains(types,'cell'))
+                    error(['Data error for file ' file '. ' tag ' contains text entries, which are unhandled.']);                
+                % else, data is valid: convert to matrix
+                else
+                    sample = table2array(sample);
+                end
+            % if no variable, return empty array
+            else
+                sample = [];
+            end
+        end        
+
         
         function [date_format] = infer_date_format(frequency, file, start_date, end_date)
             
@@ -671,6 +717,10 @@ classdef iu
                 % if variables are required but some in-sample data is provided, replicate final in-sample value
                 elseif required && ~iu.is_empty(insample_data)
                     sample_p = repmat(insample_data(end,:), periods, 1);
+                    % test for NaNs, and if any, raise error
+                    if any(isnan(sample_p(:)))
+                        error(['Data error for exogenous. No prediction provided in ' file ' and final in-sample value is NaN, which is unhandled for forecasting.'])
+                    end
                 % if not required, return empty array
                 else
                     sample_p = [];
@@ -1041,7 +1091,41 @@ classdef iu
             end
         end
         
-        
+
+        function check_decomposition_table(data, endogenous_variables, file)
+            
+            % check_decomposition_table(data, endogenous_variables, file)
+            % checks whether mfbvar decomposition table is of valid format
+            % 
+            % parameters:
+            % data : table
+            %     table containing constrained coefficient information
+            % endogenous_variables : string array
+            %     array containing the names of endogenous variables
+            % file : char
+            %     name of data file (with extension csv, xls or xlsx)
+            % 
+            % returns:
+            % none
+            
+            columns = string(data.Properties.VariableNames);
+            if ~isequal(columns, endogenous_variables)
+                error(['Data error for file ' file '. Column names don''t match the set of endogenous variables.']);
+            end
+            rows = string(data.Properties.RowNames)';
+            if ~isequal(rows, "periods")
+                error(['Data error for file ' file '. Row name should be "periods".']);
+            end
+            number_endogenous = numel(endogenous_variables);
+            for i=1:number_endogenous
+                period = table2array(data(1,endogenous_variables(i)));
+                if ~iu.is_integer(period)
+                    error(['Data error for file ' file '. Entry in column ' convertStringsToChars(endogenous_variables(i)) ' is not integer.']);
+                end
+            end
+        end
+
+
         function [condition_table, shock_table] = get_condition_table(data, endogenous_variables)
             
             % function [condition_table, shock_table] = get_condition_table(data, endogenous_variables)
@@ -1321,6 +1405,18 @@ classdef iu
                 model_name = 'Bayesian Vector Autoregressive Moving Average';
                 model_class = 3;
                 model_type = 2;
+            elseif isequal(class_name, 'MixedFrequencyBayesianVar')
+                model_name = 'Mixed Frequency Bayesian Var';
+                model_class = 4;
+                model_type = 1;     
+            elseif isequal(class_name, 'BayesianDynamicFactorModel')
+                model_name = 'Bayesian Dynamic Factor Model';
+                model_class = 4;
+                model_type = 2;         
+            elseif isequal(class_name, 'BayesianMidasRegression')
+                model_name = 'Bayesian Midas Regression';
+                model_class = 4;
+                model_type = 3;
             end
         end
         

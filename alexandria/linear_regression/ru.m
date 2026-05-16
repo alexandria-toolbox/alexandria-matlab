@@ -241,7 +241,7 @@ classdef ru
             % n : int
             %     number of sample observations
             % k : int
-            %     dimension of VAR coefficients        
+            %     dimension of regression coefficients        
             %     
             % returns:
             % insample_evaluation : dict

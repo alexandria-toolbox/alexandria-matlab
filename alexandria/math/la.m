@@ -283,6 +283,55 @@ classdef la
             end
         end
         
+
+        function [y, non_nan_entries] = dropna(x)
+            
+            % drops NaN entries from numpy vector
+            % 
+            % parameters:
+            % x : matrix of size (n,1)
+            %     vector containing both numeric and NaN entries
+            % 
+            % returns:
+            % y : matrix of size (m,1)
+            %     vector containing numeric entries only, with m<= n
+            
+            non_nan_entries = find(~isnan(x));
+            y = x(non_nan_entries);
+        end
+
+
+        function [inv_XX] = robust_covariance_matrix(X)
+            
+            % computes low-rank robust covariance matrix
+            % 
+            % parameters:
+            % x : ndarray of shape (T,n)
+            %     matrix of regressors 
+            % 
+            % returns:
+            % inv_XX : ndarray of shape (n,n)
+            %     robust variance-covariance matrix   
         
+            n = size(X,2);
+            XX = X' * X;
+            X_rank = rank(XX);
+            [eigenvectors eigenvalues] = eig(XX);
+            max_eigenvalue = max(real(diag(eigenvalues)));
+            min_eigenvalue = min(real(diag(eigenvalues)));
+            conditioning_ratio = abs(max_eigenvalue / min_eigenvalue);
+            if X_rank == n && conditioning_ratio < 1e7
+                inv_XX = la.invert_spd_matrix(XX);
+            else
+                lamda = max_eigenvalue * 1e-5;
+                identity = eye(n);
+                identity(1,1) = 0;
+                inv_XX_I = la.invert_spd_matrix(XX + lamda * identity);
+                inv_XX = inv_XX_I * XX * inv_XX_I;
+            end
+        end
+
+
     end
+
 end

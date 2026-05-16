@@ -221,7 +221,7 @@ classdef cu
                       "     /_/ /_/ /_/  \___/  /_/\_\ \__,_/ /_/ /_/ \____/ /_/   /_/  \__,_/        "; ...
                       "                                                                               "; ...
                       "     The library of Bayesian time-series models                                "; ...
-                      "     V 2.0 - Copyright Ⓒ  Romain Legrand                                      "; ...
+                      "     V 3.0 - Copyright Ⓒ  Romain Legrand                                      "; ...
                       "   ========================================================================    "; ...
                       "                                                                               "; ...
                       "                                                                               "; ...
@@ -510,6 +510,49 @@ classdef cu
             end
         end
 
+        
+        
+        function [loadings_regressors factor_regressors residual_regressors] = make_dfm_regressors(m, q, p, r)
+        
+            % make_dfm_regressors(m, q, p, r)
+            % list of regressors for dynamic factor model
+            % 
+            % m : int
+            %     number of latent factors
+            % q : int
+            %     number of loadings lags
+            % p : int
+            %     number of factor lags
+            % r : int
+            %     number of residual lags
+            % 
+            % returns:
+            % loadings_regressors: str array
+            %     list of string containing the loadings regressors       
+            % factor_regressors: str array
+            %     list of string containing the factor regressors   
+            % residual_regressors: str array
+            %     list of string containing the residual regressors  
+
+            loadings_regressors = string([]);
+            for i=1:m
+                loadings_regressors = [loadings_regressors ['factor' num2str(i)]];
+                for j=1:q
+                    loadings_regressors = [loadings_regressors ['factor' num2str(i) ' (-' num2str(j) ')']];
+                end
+            end
+            factor_regressors = string([]);
+            for i=1:m
+                for j=1:p
+                    factor_regressors = [factor_regressors ['factor' num2str(i) ' (-' num2str(j) ')']];
+                end
+            end
+            residual_regressors = string([]);
+            for i=1:r
+                residual_regressors = [residual_regressors ['resid (-' num2str(i) ' )']];
+            end
+        end
+                
 
         function [index] = make_index(n, m, p, k)
 
@@ -539,7 +582,47 @@ classdef cu
             for g=1:n
                 for h=1:p
                     i = i + 1;
-                    index(i) = m + (h-1) * n + g;
+                    index(i) = m + (h - 1) * n + g;
+                end
+            end
+        end
+
+
+        function [loadings_index factor_index] = make_dfm_index(k, l, m, q, p)
+        
+            % k : int
+            %     factor VAR coefficients per equation
+            % l : int
+            %     regression coefficients per loading equation
+            % m : int
+            %     number of latent factors
+            % q : int
+            %     number of loadings lags
+            % p : int
+            %     number of factor lags
+            % r : int
+            %     number of residual lags
+            % 
+            % returns:
+            % loadings_index: matrix of size (l,)
+            %     array of loadings indices  
+            % factor_index: matrix of size (k,)
+            %     array of factor indices
+
+            loadings_index = zeros(l,1);
+            i = 0;
+            for a=1:m
+                for b=1:q+1
+                    i = i + 1;
+                    loadings_index(i) = (b - 1) * m + a;
+                end
+            end
+            factor_index = zeros(k,1);
+            i = 0;
+            for a=1:m
+                for b = 1:p
+                    i = i + 1;
+                    factor_index(i) = (b - 1) * m + a;
                 end
             end
         end

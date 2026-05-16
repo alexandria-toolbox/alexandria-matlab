@@ -120,6 +120,7 @@ classdef VecVarmaProcessor < handle
             [self.ext_condition_table, self.ext_shock_table] = self.get_ext_condition_table();
             % recover sign restrictions data
             [self.ext_restriction_table] = self.get_ext_restriction_table();
+            % print loading done message
             if self.progress_bar
                 cu.print_message('  —  done');
             end
@@ -603,10 +604,11 @@ classdef VecVarmaProcessor < handle
                 end
                 % if there are exogenous variables in the model
                 if ~iu.is_empty(self.exogenous_variables)
-                    % check that exogenous variables are found in data
-                    iu.check_variables(data, self.forecast_file, self.exogenous_variables, 'exogenous variables');
+                    % load in-sample data to fill missing variables
+                    in_sample_data = iu.load_data(self.project_path, self.data_file); 
+                    in_sample_data = table2array(in_sample_data(end-1:end,self.exogenous_variables));
                     % load exogenous data 
-                    Z_p = iu.fetch_forecast_data(data, [], self.exogenous_variables, ...
+                    Z_p = iu.fetch_forecast_data(data, in_sample_data, self.exogenous_variables, ...
                     self.forecast_file, true, self.forecast_periods, 'exogenous variable');
                 end
             end

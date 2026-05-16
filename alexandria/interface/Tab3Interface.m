@@ -472,8 +472,8 @@ classdef Tab3Interface < handle
 
             % structural identification label
             self.t3_txt15 = uicontrol('style', 'text');
-            set(self.t3_txt15, 'unit', 'pixels', 'position', [430 235 200 30]);
-            set(self.t3_txt15, 'String', ' IRF periods');
+            set(self.t3_txt15, 'unit', 'pixels', 'position', [430 235 300 30]);
+            set(self.t3_txt15, 'String', ' structural identification');
             set(self.t3_txt15, 'HorizontalAlignment', 'left');
             set(self.t3_txt15, 'FontName', 'Serif');
             set(self.t3_txt15, 'FontSize', 12);

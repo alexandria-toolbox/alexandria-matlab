@@ -306,7 +306,7 @@ classdef VectorAutoregressionGraphics < handle
                 end
                 % joint graph
                 fevd = permute(self.model.fevd_estimates, [3 2 1 4]);
-                fig = gu.var_fevd_all(fevd, endogenous, shocks, n);
+                fig = gu.var_fevd_all(fevd, endogenous, shocks, n, n);
                 gu.show_and_save(fig, show, save, path, 'fevd-all.png');
             end
         end
@@ -340,7 +340,7 @@ classdef VectorAutoregressionGraphics < handle
                 end
                 % joint graph
                 hd = permute(self.model.hd_estimates, [3 2 1 4]);
-                fig = gu.var_hd_all(hd, endogenous, shocks, dates, n, T);
+                fig = gu.var_hd_all(hd, endogenous, shocks, dates, n, n, T);
                 gu.show_and_save(fig, show, save, path, 'hd-all.png');
             end
         end

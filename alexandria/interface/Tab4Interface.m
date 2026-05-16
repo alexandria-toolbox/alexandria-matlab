@@ -560,8 +560,10 @@ classdef Tab4Interface < handle
             applications = unique(split_image_string(:,1));
             % reorganize applications so that they are in the right order
             sorted_applications = [];
-            possible_applications = ["fit", "residuals", "shocks", "steady_state", "forecasts", ...
-                                     "conditional_forecasts", "irf", "fevd", "hd"];
+            possible_applications = ["fit", "residuals", "shocks", "steady_state", "factors", ...
+                                     "forecasts", "conditional_forecasts", "irf", "fevd", "hd"];
+            % possible_applications = ["fit", "residuals", "shocks", "steady_state", ...
+            %                          "forecasts", "conditional_forecasts", "irf", "fevd", "hd"];
             for i=1:numel(possible_applications)
                 if ismember(possible_applications(i), applications)
                     sorted_applications = [sorted_applications possible_applications(i)];

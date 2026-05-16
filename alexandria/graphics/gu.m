@@ -627,6 +627,114 @@ classdef gu
         end
 
 
+        function [fig] = factor_single_variable(factors, dates, name)
+
+            % factor_single_variable(factors, dates, name)
+            % produces factor figure for dfm, single variable
+            % 
+            % parameters:     
+            % factors: matrix of size (T,3)
+            %     factor values, median, lower and upper bounds
+            % dates: datetime array of size (T)
+            %     index of in-sample dates
+            % number: int
+            %     factor number between 1 and m
+            %     
+            % returns:
+            % fig: matlab figure
+            %     fitted figure
+
+            % create figure
+            fig = figure('Position', [100 100 660 470], 'Visible', 'off');
+            [min_YLim max_YLim] = gu.set_min_and_max(factors, 0.07, 0.1);
+            ax = gca;
+            ax.Position = [0.08 0.06 0.88 0.88];
+            % plot shocks with patched credibility intervals
+            hold on;
+            x_patch = [dates;flipud(dates)];
+            y_patch = [factors(:,2);flipud(factors(:,3))];
+            shock_patch = fill(x_patch, y_patch, 'g');
+            set(shock_patch, 'FaceColor', [0.3 0.7 0.2], 'edgecolor', 'none', 'facealpha', 0.4);
+            plot([dates(1) dates(end)], [0 0], 'LineStyle', '--', 'color', [0 0 0], 'LineWidth', 1);
+            plot(dates, factors(:,1), 'LineWidth', 1.3, 'color', [0 0.5 0]);
+            plot([dates(1) dates(end)],[max_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+            plot([dates(end) dates(end)],[min_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+            hold off;
+            % set graphic limits, background and font size for ticks
+            set(gca,'XLim', [dates(1) dates(end)]);
+            set(gca,'YLim', [min_YLim max_YLim]);
+            set(gca, 'color', [.9 .9 .9]);
+            set(gca, 'FontSize',13);
+            % set figure and plot background color
+            set(0,'defaultfigurecolor',[1 1 1]);
+            grid on;
+            set(gca, 'GridColor', [.3 .3 .3]);
+            % create top and right axes
+            box off;
+            % title
+            title(['Factor ' name], 'FontWeight', 'bold','FontSize',14,'FontName','Serif');
+            % command to preserve grey background color when saving as image
+            fig.InvertHardcopy = 'off';
+        end
+
+
+        function [fig] = factor_all(factors, dates, m)
+
+            % factor_all(factors, dates, m)
+            % produces factor figure for DFM, all factors
+            % 
+            % parameters:     
+            % factors: matrix of size (T,m,3)
+            %     factor values, median, lower and upper bounds
+            % dates: datetime array of size (T)
+            %     index of in-sample dates
+            % m: int
+            %     number of factors
+            %     
+            % returns:
+            % fig: matlab figure
+            %     fitted figure
+
+            % get plot dimensions
+            columns = ceil(m ^ 0.5);
+            rows = columns;
+            % create figure
+            fig = figure('Position', [100 100 660*columns 470*rows], 'Visible', 'off');
+            [positions] = gu.make_subplot_positions(m, rows, columns, 0.07, 0.05, 0.04, 0.05);
+            x_patch = [dates;flipud(dates)];
+            for i = 1:m
+                axes('Units', 'normalized', 'Position', positions(i,:));
+                % get min and max for subplot
+                [min_YLim max_YLim] = gu.set_min_and_max([factors(:,:,i)], 0.07, 0.1);
+                % plot shocks with patched credibility intervals
+                hold on;
+                y_patch = [factors(:,2,i);flipud(factors(:,3,i))];
+                shock_patch = fill(x_patch, y_patch, 'g');
+                set(shock_patch, 'FaceColor', [0.3 0.7 0.2], 'edgecolor', 'none', 'facealpha', 0.4);
+                plot([dates(1) dates(end)], [0 0], 'LineStyle', '--', 'color', [0 0 0], 'LineWidth', 1);
+                plot(dates, factors(:,1,i), 'LineWidth', 1.3, 'color', [0 0.5 0]);
+                plot([dates(1) dates(end)],[max_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+                plot([dates(end) dates(end)],[min_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+                hold off;
+                % set graphic limits, background and font size for ticks
+                set(gca,'XLim', [dates(1) dates(end)]);
+                set(gca,'YLim', [min_YLim max_YLim]);
+                set(gca, 'color', [.9 .9 .9]);
+                set(gca, 'FontSize',13);
+                % set figure and plot background color
+                set(0,'defaultfigurecolor',[1 1 1]);
+                grid on;
+                set(gca, 'GridColor', [.3 .3 .3]);
+                % create top and right axes
+                box off;
+                % title
+                title(['Factor ' num2str(i)], 'FontWeight', 'bold','FontSize',14,'FontName','Serif');
+                % command to preserve grey background color when saving as image
+                fig.InvertHardcopy = 'off';
+            end
+        end
+
+
         function [fig] = var_forecasts_single_variable(actual, forecasts, Y_p, dates, forecast_dates, name)
 
             % var_forecasts_single_variable(actual, forecasts, Y_p, dates, forecast_dates, name)
@@ -1015,7 +1123,7 @@ classdef gu
             irf_periods = (1:size(irf,1))';
             % create figure
             fig = figure('Position', [100 100 660*n_shocks 470*n_shocks], 'Visible', 'off');
-            [positions] = gu.make_subplot_positions(n_endo * n_shocks, n_shocks, n_shocks, 0.07, 0.05, 0.04, 0.05);
+            [positions] = gu.make_subplot_positions(n_endo * n_shocks, n_endo, n_shocks, 0.07, 0.05, 0.04, 0.05);
             x_patch = [irf_periods;flipud(irf_periods)];
             % loop over variables and shocks
             k = 0;            
@@ -1201,9 +1309,9 @@ classdef gu
         end
 
 
-        function [fig] = var_fevd_all(fevd, variables, shocks, n)
+        function [fig] = var_fevd_all(fevd, variables, shocks, n_endo, n_shocks)
 
-            % var_fevd_joint(fevd, name, shocks, n)
+            % var_fevd_all(fevd, variables, shocks, n_endo, n_shocks)
             % produces FEVD figure for var model, all variables to all shocks
             % 
             % parameters:     
@@ -1213,8 +1321,10 @@ classdef gu
             %     name of variables for which figure is produced
             % shocks: char
             %     name of shocks for which figure is produced        
-            % n: int
+            % n_endo: int
             %     number of endogenous variables
+            % n_shocks: int
+            %     number of structural shocks            
             %     
             % returns:
             % fig: matlab figure
@@ -1223,39 +1333,39 @@ classdef gu
             % periods to plot
             fevd_periods = size(fevd,1);
             % get plot dimensions
-            columns = ceil(n ^ 0.5);
+            columns = ceil(n_endo ^ 0.5);
             rows = columns;
             % create figure
             fig = figure('Position', [100 100 660*columns 470*rows], 'Visible', 'off');
-            [positions] = gu.make_subplot_positions(n, rows, columns, 0.07, 0.05, 0.04, 0.05);
+            [positions] = gu.make_subplot_positions(n_endo, rows, columns, 0.07, 0.05, 0.04, 0.05);
             x_patch = [fevd_periods;flipud(fevd_periods)];
-            colors = gu.make_colors(n);
+            colors = gu.make_colors(n_shocks);
             % loop over variables
-            for i=1:n
+            for i=1:n_endo
                 axes('Units', 'normalized', 'Position', positions(i,:));
                 cum_fevd = cumsum(fevd(:,:,i,1),2);
                 for period=1:fevd_periods
                     % create custom bar plot
                     left_x_edge = period - 0.4;
                     right_x_edge = period + 0.4;
-                    x_patch = [left_x_edge, right_x_edge, right_x_edge, left_x_edge];
-                    for i=1:n
-                        if i == 1
+                    patch_periods = [left_x_edge, right_x_edge, right_x_edge, left_x_edge];
+                    for j=1:n_shocks
+                        if j == 1
                             lower = 0;
                         else
-                            lower = cum_fevd(period,i-1);
+                            lower = cum_fevd(period,j-1);
                         end
-                        upper = cum_fevd(period,i);
-                        y_patch = [upper upper lower lower];
+                        upper = cum_fevd(period,j);
+                        patch_data = [upper upper lower lower];
                         hold on;
                         if period == 1 && i < 16
                             legend('AutoUpdate','on');
-                            fevd_patch = fill(x_patch, y_patch, 'g', 'DisplayName', char(shocks(i)));
+                            fevd_patch = fill(patch_periods, patch_data, 'g', 'DisplayName', char(shocks(j)));
                             legend('AutoUpdate','off');
                         else
-                            fevd_patch = fill(x_patch, y_patch, 'g');
+                            fevd_patch = fill(patch_periods, patch_data, 'g');
                         end
-                        set(fevd_patch, 'FaceColor', colors(i,:), 'edgecolor', 'none', 'facealpha', 0.4);
+                        set(fevd_patch, 'FaceColor', colors(j,:), 'edgecolor', 'none', 'facealpha', 0.4);
                         plot([left_x_edge right_x_edge], [upper upper], 'LineWidth', 0.8, 'color', [0 0 0]);
                         hold off
                     end
@@ -1435,9 +1545,9 @@ classdef gu
         end
 
 
-        function [fig] = var_hd_all(hd, variables, shocks, dates, n, T)
+        function [fig] = var_hd_all(hd, variables, shocks, dates, n_endo, n_shocks, T)
 
-            % var_hd_all(hd, variables, shocks, dates, n, T)
+            % var_hd_all(hd, variables, shocks, dates, n_endo, n_shocks, T)
             % produces HD figure for var model, all variables to all shocks
             % 
             % parameters:     
@@ -1449,8 +1559,10 @@ classdef gu
             %     name of shocks for which figure is produced         
             % dates: datetime index of size (T)
             %     index of in-sample dates
-            % n: int
+            % n_endo: int
             %     number of endogenous variables
+            % n_shocks: int
+            %     number of structural shocks          
             % T: int
             %     number of sample periods
             %     
@@ -1459,15 +1571,15 @@ classdef gu
             %     HD figure 
 
             % get plot dimensions
-            columns = ceil(n ^ 0.5);
+            columns = ceil(n_endo ^ 0.5);
             rows = columns;
             % create figure
             fig = figure('Position', [100 100 660*columns 470*rows], 'Visible', 'off');
-            [positions] = gu.make_subplot_positions(n, rows, columns, 0.07, 0.05, 0.04, 0.05);
+            [positions] = gu.make_subplot_positions(n_endo, rows, columns, 0.07, 0.05, 0.04, 0.05);
             x_patch = [dates;flipud(dates)];
-            colors = gu.make_colors(n);
+            colors = gu.make_colors(n_shocks);
             % loop over variables
-            for i=1:n
+            for i=1:n_endo
                 % initiate subplot
                 axes('Units', 'normalized', 'Position', positions(i,:));
                 % recover HD for this variable
@@ -1484,7 +1596,7 @@ classdef gu
                 positive_hd(positive_hd<0) = 0;
                 cum_positive_hd = cumsum(positive_hd,2);
                 cum_positive_hd = [zeros(T,1) cum_positive_hd]; 
-                for j=1:n
+                for j=1:n_shocks
                     y_patch = [cum_positive_hd(:,j+1); flipud(cum_positive_hd(:,j))];
                     hold on;
                     if j < 15
@@ -1503,7 +1615,7 @@ classdef gu
                 negative_hd(positive_hd>0) = 0;
                 cum_negative_hd = cumsum(negative_hd,2);
                 cum_negative_hd = [zeros(T,1) cum_negative_hd]; 
-                for j=1:n
+                for j=1:n_shocks
                     y_patch = [cum_negative_hd(:,j+1); flipud(cum_negative_hd(:,j))];
                     hold on
                     fitted_patch = fill(x_patch, y_patch, 'g');
@@ -1532,6 +1644,554 @@ classdef gu
                 name = char(variables(i));
                 title(['HD: ' name], 'FontWeight', 'bold','FontSize',14,'FontName','Serif');
                 legend('Location','southoutside','Orientation','horizontal','NumColumns',5);
+                % command to preserve grey background color when saving as image
+                fig.InvertHardcopy = 'off';
+            end
+        end
+
+
+        % function [fig] = var_hd_all(hd, variables, shocks, dates, n, T)
+        % 
+        %     % var_hd_all(hd, variables, shocks, dates, n, T)
+        %     % produces HD figure for var model, all variables to all shocks
+        %     % 
+        %     % parameters:     
+        %     % hd: matrix of size (n,n,T,3)
+        %     %     hd values for all shocks
+        %     % variables: str array
+        %     %     name of variables for which figure is produced
+        %     % shocks: str array
+        %     %     name of shocks for which figure is produced         
+        %     % dates: datetime index of size (T)
+        %     %     index of in-sample dates
+        %     % n: int
+        %     %     number of endogenous variables
+        %     % T: int
+        %     %     number of sample periods
+        %     %     
+        %     % returns:
+        %     % fig: matlab figure
+        %     %     HD figure 
+        % 
+        %     % get plot dimensions
+        %     columns = ceil(n ^ 0.5);
+        %     rows = columns;
+        %     % create figure
+        %     fig = figure('Position', [100 100 660*columns 470*rows], 'Visible', 'off');
+        %     [positions] = gu.make_subplot_positions(n, rows, columns, 0.07, 0.05, 0.04, 0.05);
+        %     x_patch = [dates;flipud(dates)];
+        %     colors = gu.make_colors(n);
+        %     % loop over variables
+        %     for i=1:n
+        %         % initiate subplot
+        %         axes('Units', 'normalized', 'Position', positions(i,:));
+        %         % recover HD for this variable
+        %         variable_hd = hd(:,:,i,1);
+        %         % trend
+        %         cum_hd = sum(variable_hd,2);
+        %         hold on
+        %         legend('AutoUpdate','on');
+        %         plot(dates, cum_hd, 'LineWidth', 1.5, 'color', [0 0 0], 'DisplayName', 'trend');
+        %         legend('AutoUpdate','off');
+        %         hold off
+        %         % positive contributions
+        %         positive_hd = variable_hd;
+        %         positive_hd(positive_hd<0) = 0;
+        %         cum_positive_hd = cumsum(positive_hd,2);
+        %         cum_positive_hd = [zeros(T,1) cum_positive_hd]; 
+        %         for j=1:n
+        %             y_patch = [cum_positive_hd(:,j+1); flipud(cum_positive_hd(:,j))];
+        %             hold on;
+        %             if j < 15
+        %                 legend('AutoUpdate','on');
+        %                 fitted_patch = fill(x_patch, y_patch, 'g', 'DisplayName', char(shocks(j)));
+        %                 legend('AutoUpdate','off');
+        %             else
+        %                 fitted_patch = fill(x_patch, y_patch, 'g');
+        %             end
+        %             set(fitted_patch, 'FaceColor', colors(j,:), 'edgecolor', 'none', 'facealpha', 0.4);
+        %             plot(dates, cum_positive_hd(:,j+1), 'LineWidth', 0.01, 'color', [0.6 0.6 0.6]);
+        %             hold off
+        %         end
+        %         % negative contributions
+        %         negative_hd = variable_hd;
+        %         negative_hd(positive_hd>0) = 0;
+        %         cum_negative_hd = cumsum(negative_hd,2);
+        %         cum_negative_hd = [zeros(T,1) cum_negative_hd]; 
+        %         for j=1:n
+        %             y_patch = [cum_negative_hd(:,j+1); flipud(cum_negative_hd(:,j))];
+        %             hold on
+        %             fitted_patch = fill(x_patch, y_patch, 'g');
+        %             set(fitted_patch, 'FaceColor', colors(j,:), 'edgecolor', 'none', 'facealpha', 0.4);
+        %             plot(dates, cum_negative_hd(:,j+1), 'LineWidth', 0.01, 'color', [0.6 0.6 0.6]);
+        %             hold off
+        %         end
+        %         % set graphic limits, background and font size for ticks
+        %         [min_YLim max_YLim] = gu.set_min_and_max([cum_positive_hd cum_negative_hd], 0.07, 0.1);
+        %         hold on
+        %         plot(dates, cum_hd, 'LineWidth', 1.5, 'color', [0 0 0]);
+        %         plot([dates(1) dates(end)],[max_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+        %         plot([dates(end) dates(end)],[min_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+        %         hold off
+        %         set(gca,'XLim', [dates(1) dates(end)]);
+        %         set(gca,'YLim', [min_YLim max_YLim]);
+        %         set(gca, 'color', [.9 .9 .9]);
+        %         set(gca, 'FontSize',13);
+        %         % set figure and plot background color
+        %         set(0,'defaultfigurecolor',[1 1 1]);
+        %         grid on;
+        %         set(gca, 'GridColor', [.3 .3 .3]);
+        %         % create top and right axes
+        %         box off;
+        %         % title
+        %         name = char(variables(i));
+        %         title(['HD: ' name], 'FontWeight', 'bold','FontSize',14,'FontName','Serif');
+        %         legend('Location','southoutside','Orientation','horizontal','NumColumns',5);
+        %         % command to preserve grey background color when saving as image
+        %         fig.InvertHardcopy = 'off';
+        %     end
+        % end
+
+
+        function [fig] = nowcasting_fit_single_variable(actual, fitted, dates, name)
+
+            % nowcasting_fit_single_variable(actual, fitted, dates, name)
+            % produces fitted figure for var model, single variable
+            % 
+            % parameters:     
+            % actual: matrix of size (T,1)
+            %     actual sample values
+            % fitted: matrix of size (T,3)
+            %     fitted values, median, lower and upper bounds
+            % dates: datetime array of size (T)
+            %     index of in-sample dates
+            % name: char
+            %     name of variable for which figure is produced
+            %     
+            % returns:
+            % fig: matlab figure
+            %     fitted figure
+
+            % create figure
+            fig = figure('Position', [100 100 660 470], 'Visible', 'off');
+            [min_YLim max_YLim] = gu.set_min_and_max([actual fitted], 0.07, 0.1);
+            ax = gca;
+            ax.Position = [0.08 0.06 0.88 0.88];
+            % plot actual and fitted
+            actual_mask = ~isnan(actual);
+            actual_dates = dates(actual_mask);
+            actual_data = actual(actual_mask);
+            hold on;
+            x_patch = [dates;flipud(dates)];
+            y_patch = [fitted(:,2);flipud(fitted(:,3))];
+            fitted_patch = fill(x_patch, y_patch, 'g');
+            set(fitted_patch, 'FaceColor', [0.3 0.7 0.2], 'edgecolor', 'none', 'facealpha', 0.4);
+            plot(dates, fitted(:,1), 'LineWidth', 1.3, 'color', [0 0.5 0]);
+            plot(actual_dates, actual_data, 'LineWidth', 1.3, 'color', [0.1 0.3 0.8]);
+            plot([dates(1) dates(end)],[max_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+            plot([dates(end) dates(end)],[min_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+            hold off;
+            % set graphic limits, background and font size for ticks
+            set(gca,'XLim', [dates(1) dates(end)]);
+            set(gca,'YLim', [min_YLim max_YLim]);
+            set(gca, 'color', [.9 .9 .9]);
+            set(gca, 'FontSize',13);
+            % set figure and plot background color
+            set(0,'defaultfigurecolor',[1 1 1]);
+            grid on;
+            set(gca, 'GridColor', [.3 .3 .3]);
+            % create top and right axes
+            box off;
+            % title
+            title(['Actual and fitted: ' name], 'FontWeight', 'bold','FontSize',14,'FontName','Serif');
+            % command to preserve grey background color when saving as image
+            fig.InvertHardcopy = 'off';
+        end
+
+
+        function [fig] = nowcasting_fit_all(actual, fitted, dates, endogenous, n)
+
+            % nowcasting_fit_all(actual, fitted, dates, endogenous, n)
+            % produces fitted figure for var model, all variables
+            % 
+            % parameters:     
+            % actual: matrix of size (T,n)
+            %     actual sample values
+            % fitted: matrix of size (T,n,3)
+            %     fitted values, median, lower and upper bounds
+            % dates: datetime array of size (T)
+            %     index of in-sample dates
+            % endogenous: str array
+            %     list of endogenous variables for which figure is produced
+            % n: int
+            %     number of endogenous variables            
+            %     
+            % returns:
+            % fig: matlab figure
+            %     fitted figure
+
+            % get plot dimensions
+            columns = ceil(n ^ 0.5);
+            rows = columns;
+            % create figure
+            fig = figure('Position', [100 100 660*columns 470*rows], 'Visible', 'off');
+            [positions] = gu.make_subplot_positions(n, rows, columns, 0.07, 0.05, 0.04, 0.05);
+            x_patch = [dates;flipud(dates)];
+            for i = 1:n
+                axes('Units', 'normalized', 'Position', positions(i,:));
+                % get min and max for subplot
+                [min_YLim max_YLim] = gu.set_min_and_max([actual(:,i) fitted(:,:,i)], 0.07, 0.1);
+                % plot actual, and fitted with patched credibility intervals
+                actual_mask = ~isnan(actual(:,i));
+                actual_dates = dates(actual_mask);
+                actual_data = actual(actual_mask,:);
+                hold on;
+                y_patch = [fitted(:,2,i);flipud(fitted(:,3,i))];
+                fitted_patch = fill(x_patch, y_patch, 'g');
+                set(fitted_patch, 'FaceColor', [0.3 0.7 0.2], 'edgecolor', 'none', 'facealpha', 0.4);
+                plot(dates, fitted(:,1,i), 'LineWidth', 1.3, 'color', [0 0.5 0]);
+                plot(actual_dates, actual_data(:,i), 'LineWidth', 1.3, 'color', [0.1 0.3 0.8]);
+                plot([dates(1) dates(end)],[max_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+                plot([dates(end) dates(end)],[min_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+                hold off;
+                % set graphic limits, background and font size for ticks
+                set(gca,'XLim', [dates(1) dates(end)]);
+                set(gca,'YLim', [min_YLim max_YLim]);
+                set(gca, 'color', [.9 .9 .9]);
+                set(gca, 'FontSize',13);
+                % set figure and plot background color
+                set(0,'defaultfigurecolor',[1 1 1]);
+                grid on;
+                set(gca, 'GridColor', [.3 .3 .3]);
+                % create top and right axes
+                box off;
+                % title
+                name = char(endogenous(i));
+                title(['Actual and fitted: ' name], 'FontWeight', 'bold','FontSize',14,'FontName','Serif');
+                % command to preserve grey background color when saving as image
+                fig.InvertHardcopy = 'off';
+            end
+        end
+
+
+        function [fig] = nowcasting_forecasts_single_variable(actual, forecasts, Y_p, dates, forecast_dates, name)
+
+            % nowcasting_forecasts_single_variable(actual, forecasts, Y_p, dates, forecast_dates, name)
+            % produces forecast figure for var model, single variable
+            % 
+            % parameters: 
+            % actual: matrix of size (T,1)
+            %     actual sample values
+            % forecasts: matrix of size (f_periods,3)
+            %     forecast values, median, lower and upper bounds
+            % Y_p: matrix of size (f_periods,1)
+            %     actual out-of-sample values  
+            % dates: datetime array of size (T)
+            %     index of in-sample dates
+            % forecast_dates: datetime array of size (f_periods)
+            %     index of forecast dates            
+            % name: char
+            %     name of variable for which figure is produced
+            %     
+            % returns:
+            % fig: matlab figure
+            %     fitted figure
+
+            % periods to plot
+            T = max(10, 2 * size(forecasts,1));
+            sample_data = actual(end-T+1:end);
+            sample_dates = dates(end-T+1:end);
+            sample_mask = ~isnan(sample_data);
+            sample_dates = sample_dates(sample_mask);
+            sample_data = sample_data(sample_mask);
+            T = size(sample_data,1);
+            if isempty(Y_p)
+                plot_data = [repmat(sample_data,[1 3]);forecasts];
+            else
+                plot_data = [repmat(sample_data, [1 4]);[forecasts Y_p]];
+            end
+            plot_dates = [sample_dates;forecast_dates];
+            prediction_data = plot_data(T:end,:);
+            prediction_dates = plot_dates(T:end);
+            % create figure
+            fig = figure('Position', [100 100 660 470], 'Visible', 'off');
+            [min_YLim max_YLim] = gu.set_min_and_max(plot_data, 0.07, 0.1);
+            ax = gca;
+            ax.Position = [0.08 0.06 0.88 0.88];
+            % plot actual, and forecasts with patched credibility intervals
+            hold on;
+            x_patch = [prediction_dates;flipud(prediction_dates)];
+            y_patch = [prediction_data(:,2);flipud(prediction_data(:,3))];
+            forecast_patch = fill(x_patch, y_patch, 'g');
+            set(forecast_patch, 'FaceColor', [0.3 0.7 0.2], 'edgecolor', 'none', 'facealpha', 0.4);
+            plot(prediction_dates, prediction_data(:,1), 'LineWidth', 1.3, 'color', [0 0.5 0]);
+            if ~isempty(Y_p)
+                plot(prediction_dates, prediction_data(:,4), 'LineWidth', 1.3, 'LineStyle', '--', 'color', [0.1 0.3 0.8]);
+            end
+            plot(sample_dates, sample_data, 'Linewidth', 1.5, 'color', [0.1, 0.3, 0.8]);
+            plot([plot_dates(1) plot_dates(end)],[max_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+            plot([plot_dates(end) plot_dates(end)],[min_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+            hold off;
+            % set graphic limits, background and font size for ticks
+            set(gca,'XLim', [plot_dates(1) plot_dates(end)]);
+            set(gca,'YLim', [min_YLim max_YLim]);
+            set(gca, 'color', [.9 .9 .9]);
+            set(gca, 'FontSize',13);
+            % set figure and plot background color
+            set(0,'defaultfigurecolor',[1 1 1]);
+            grid on;
+            set(gca, 'GridColor', [.3 .3 .3]);
+            % create top and right axes
+            box off;
+            % title
+            title(['Forecasts: ' name], 'FontWeight', 'bold','FontSize',14,'FontName','Serif');
+            % command to preserve grey background color when saving as image
+            fig.InvertHardcopy = 'off';
+        end
+
+
+        function [fig] = nowcasting_forecasts_all(actual, forecasts, Y_p, dates, forecast_dates, endogenous, n)
+
+            % nowcasting_forecasts_all(actual, forecasts, Y_p, dates, forecast_dates, endogenous, n)
+            % produces forecast figure for var model, all variables
+            % 
+            % parameters:     
+            % shocks: matrix of size (T,n,3)
+            %     shock values, median, lower and upper bounds
+            % actual: matrix of size (T,n)
+            %     actual sample values
+            % forecasts: matrix of size (f_periods,n,3)
+            %     forecast values, median, lower and upper bounds
+            % Y_p: matrix of size (f_periods,n)
+            %     actual out-of-sample values
+            % dates: datetime array of size (T)
+            %     index of in-sample dates
+            % forecast_dates: datetime array of size (f_periods)
+            %     index of forecast dates                     
+            % endogenous: str array
+            %     list of endogenous variables for which figure is produced
+            % n: int
+            %     number of endogenous variables   
+            %     
+            % returns:
+            % fig: matlab figure
+            %     fitted figure
+
+            % get plot dimensions
+            columns = ceil(n ^ 0.5);
+            rows = columns;
+            % create figure
+            fig = figure('Position', [100 100 660*columns 470*rows], 'Visible', 'off');
+            [positions] = gu.make_subplot_positions(n, rows, columns, 0.07, 0.05, 0.04, 0.05);
+            for i = 1:n
+                T = max(10, 2 * size(forecasts,1));
+                sample_data = actual(end-T+1:end,i);
+                sample_dates = dates(end-T+1:end);
+                sample_mask = ~isnan(sample_data);
+                sample_dates = sample_dates(sample_mask);
+                sample_data = sample_data(sample_mask);
+                T = size(sample_data,1);
+                if isempty(Y_p)
+                    plot_data = [repmat(sample_data,[1 3]);forecasts(:,:,i)];
+                else
+                    plot_data = [repmat(sample_data, [1 4]);[forecasts(:,:,i) Y_p(:,i)]];
+                end                
+                plot_dates = [sample_dates;forecast_dates];
+                prediction_data = plot_data(T:end,:);
+                prediction_dates = plot_dates(T:end);
+                axes('Units', 'normalized', 'Position', positions(i,:));
+                % get min and max for subplot
+                [min_YLim max_YLim] = gu.set_min_and_max(plot_data, 0.07, 0.1);
+                % plot actual, and steady-state with patched credibility intervals
+                hold on;
+                x_patch = [prediction_dates;flipud(prediction_dates)];
+                y_patch = [prediction_data(:,2);flipud(prediction_data(:,3))];
+                forecast_patch = fill(x_patch, y_patch, 'g');
+                set(forecast_patch, 'FaceColor', [0.3 0.7 0.2], 'edgecolor', 'none', 'facealpha', 0.4);
+                plot(prediction_dates, prediction_data(:,1), 'LineWidth', 1.3, 'color', [0 0.5 0]);
+                if ~isempty(Y_p)
+                    plot(prediction_dates, prediction_data(:,4), 'LineWidth', 1.3, 'LineStyle', '--', 'color', [0.1 0.3 0.8]);
+                end 
+                plot(sample_dates, sample_data, 'Linewidth', 1.5, 'color', [0.1, 0.3, 0.8]);
+                plot([plot_dates(1) plot_dates(end)],[max_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+                plot([plot_dates(end) plot_dates(end)],[min_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+                hold off;
+                % set graphic limits, background and font size for ticks
+                set(gca,'XLim', [plot_dates(1) plot_dates(end)]);
+                set(gca,'YLim', [min_YLim max_YLim]);
+                set(gca, 'color', [.9 .9 .9]);
+                set(gca, 'FontSize',13);
+                % set figure and plot background color
+                set(0,'defaultfigurecolor',[1 1 1]);
+                grid on;
+                set(gca, 'GridColor', [.3 .3 .3]);
+                % create top and right axes
+                box off;
+                % title
+                name = char(endogenous(i));
+                title(['Forecasts: ' name], 'FontWeight', 'bold','FontSize',14,'FontName','Serif');
+                % command to preserve grey background color when saving as image
+                fig.InvertHardcopy = 'off';
+            end
+        end
+
+
+        function [fig] = nowcasting_conditional_forecasts_single_variable(actual, forecasts, Y_p, dates, forecast_dates, name)
+
+            % nowcasting_conditional_forecasts_single_variable(actual, forecasts, Y_p, dates, forecast_dates, name)
+            % produces forecast figure for var model, single variable
+            % 
+            % parameters: 
+            % actual: matrix of size (T,1)
+            %     actual sample values
+            % forecasts: matrix of size (f_periods,3)
+            %     forecast values, median, lower and upper bounds
+            % Y_p: matrix of size (f_periods,1)
+            %     actual out-of-sample values  
+            % dates: datetime array of size (T)
+            %     index of in-sample dates
+            % forecast_dates: datetime array of size (f_periods)
+            %     index of forecast dates            
+            % name: char
+            %     name of variable for which figure is produced
+            %     
+            % returns:
+            % fig: matlab figure
+            %     fitted figure
+
+            % periods to plot
+            T = max(10, 2 * size(forecasts,1));
+            sample_data = actual(end-T+1:end);
+            sample_dates = dates(end-T+1:end);
+            sample_mask = ~isnan(sample_data);
+            sample_dates = sample_dates(sample_mask);
+            sample_data = sample_data(sample_mask);
+            T = size(sample_data,1);
+            if isempty(Y_p)
+                plot_data = [repmat(sample_data,[1 3]);forecasts];
+            else
+                plot_data = [repmat(sample_data, [1 4]);[forecasts Y_p]];
+            end
+            plot_dates = [sample_dates;forecast_dates];
+            prediction_data = plot_data(T:end,:);
+            prediction_dates = plot_dates(T:end);
+            % create figure
+            fig = figure('Position', [100 100 660 470], 'Visible', 'off');
+            [min_YLim max_YLim] = gu.set_min_and_max(plot_data, 0.07, 0.1);
+            ax = gca;
+            ax.Position = [0.08 0.06 0.88 0.88];
+            % plot actual, and forecasts with patched credibility intervals
+            hold on;
+            x_patch = [prediction_dates;flipud(prediction_dates)];
+            y_patch = [prediction_data(:,2);flipud(prediction_data(:,3))];
+            forecast_patch = fill(x_patch, y_patch, 'g');
+            set(forecast_patch, 'FaceColor', [0.3 0.7 0.2], 'edgecolor', 'none', 'facealpha', 0.4);
+            plot(prediction_dates, prediction_data(:,1), 'LineWidth', 1.3, 'color', [0 0.5 0]);
+            if ~isempty(Y_p)
+                plot(prediction_dates, prediction_data(:,4), 'LineWidth', 1.3, 'LineStyle', '--', 'color', [0.1 0.3 0.8]);
+            end
+            plot(sample_dates, sample_data, 'Linewidth', 1.5, 'color', [0.1, 0.3, 0.8]);
+            plot([plot_dates(1) plot_dates(end)],[max_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+            plot([plot_dates(end) plot_dates(end)],[min_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+            hold off;
+            % set graphic limits, background and font size for ticks
+            set(gca,'XLim', [plot_dates(1) plot_dates(end)]);
+            set(gca,'YLim', [min_YLim max_YLim]);
+            set(gca, 'color', [.9 .9 .9]);
+            set(gca, 'FontSize',13);
+            % set figure and plot background color
+            set(0,'defaultfigurecolor',[1 1 1]);
+            grid on;
+            set(gca, 'GridColor', [.3 .3 .3]);
+            % create top and right axes
+            box off;
+            % title
+            title(['Conditional forecasts: ' name], 'FontWeight', 'bold','FontSize',14,'FontName','Serif');
+            % command to preserve grey background color when saving as image
+            fig.InvertHardcopy = 'off';
+        end
+
+
+        function [fig] = nowcasting_conditional_forecasts_all(actual, forecasts, Y_p, dates, forecast_dates, endogenous, n)
+
+            % nowcasting_conditional_forecasts_all(actual, forecasts, Y_p, dates, forecast_dates, endogenous, n)
+            % produces forecast figure for var model, all variables
+            % 
+            % parameters:     
+            % shocks: matrix of size (T,n,3)
+            %     shock values, median, lower and upper bounds
+            % actual: matrix of size (T,n)
+            %     actual sample values
+            % forecasts: matrix of size (f_periods,n,3)
+            %     forecast values, median, lower and upper bounds
+            % Y_p: matrix of size (f_periods,n)
+            %     actual out-of-sample values
+            % dates: datetime array of size (T)
+            %     index of in-sample dates
+            % forecast_dates: datetime array of size (f_periods)
+            %     index of forecast dates                     
+            % endogenous: str array
+            %     list of endogenous variables for which figure is produced
+            % n: int
+            %     number of endogenous variables   
+            %     
+            % returns:
+            % fig: matlab figure
+            %     fitted figure
+
+            % get plot dimensions
+            columns = ceil(n ^ 0.5);
+            rows = columns;
+            % create figure
+            fig = figure('Position', [100 100 660*columns 470*rows], 'Visible', 'off');
+            [positions] = gu.make_subplot_positions(n, rows, columns, 0.07, 0.05, 0.04, 0.05);
+            for i = 1:n
+                T = max(10, 2 * size(forecasts,1));
+                sample_data = actual(end-T+1:end,i);
+                sample_dates = dates(end-T+1:end);
+                sample_mask = ~isnan(sample_data);
+                sample_dates = sample_dates(sample_mask);
+                sample_data = sample_data(sample_mask);
+                T = size(sample_data,1);
+                if isempty(Y_p)
+                    plot_data = [repmat(sample_data,[1 3]);forecasts(:,:,i)];
+                else
+                    plot_data = [repmat(sample_data, [1 4]);[forecasts(:,:,i) Y_p(:,i)]];
+                end                
+                plot_dates = [sample_dates;forecast_dates];
+                prediction_data = plot_data(T:end,:);
+                prediction_dates = plot_dates(T:end);
+                axes('Units', 'normalized', 'Position', positions(i,:));
+                % get min and max for subplot
+                [min_YLim max_YLim] = gu.set_min_and_max(plot_data, 0.07, 0.1);
+                % plot actual, and steady-state with patched credibility intervals
+                hold on;
+                x_patch = [prediction_dates;flipud(prediction_dates)];
+                y_patch = [prediction_data(:,2);flipud(prediction_data(:,3))];
+                forecast_patch = fill(x_patch, y_patch, 'g');
+                set(forecast_patch, 'FaceColor', [0.3 0.7 0.2], 'edgecolor', 'none', 'facealpha', 0.4);
+                plot(prediction_dates, prediction_data(:,1), 'LineWidth', 1.3, 'color', [0 0.5 0]);
+                if ~isempty(Y_p)
+                    plot(prediction_dates, prediction_data(:,4), 'LineWidth', 1.3, 'LineStyle', '--', 'color', [0.1 0.3 0.8]);
+                end 
+                plot(sample_dates, sample_data, 'Linewidth', 1.5, 'color', [0.1, 0.3, 0.8]);
+                plot([plot_dates(1) plot_dates(end)],[max_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+                plot([plot_dates(end) plot_dates(end)],[min_YLim max_YLim], 'LineWidth', 0.001, 'color', [0 0 0]);
+                hold off;
+                % set graphic limits, background and font size for ticks
+                set(gca,'XLim', [plot_dates(1) plot_dates(end)]);
+                set(gca,'YLim', [min_YLim max_YLim]);
+                set(gca, 'color', [.9 .9 .9]);
+                set(gca, 'FontSize',13);
+                % set figure and plot background color
+                set(0,'defaultfigurecolor',[1 1 1]);
+                grid on;
+                set(gca, 'GridColor', [.3 .3 .3]);
+                % create top and right axes
+                box off;
+                % title
+                name = char(endogenous(i));
+                title(['Conditional forecasts: ' name], 'FontWeight', 'bold','FontSize',14,'FontName','Serif');
                 % command to preserve grey background color when saving as image
                 fig.InvertHardcopy = 'off';
             end

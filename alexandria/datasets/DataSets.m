@@ -135,6 +135,45 @@ classdef DataSets < handle
             data = table2array(datatable);
         end
 
+
+        function [data] = load_japan_table(self)
+
+            % [data] = load_japan_table()
+            % load the Japan dataset as a Matlab table
+            %
+            % parameters:
+            % none
+            %
+            % returns:
+            % data : Matlab table
+            %     table containing the Japan dataset
+
+            file_path = self.get_file_path('japan');
+            opts = detectImportOptions(file_path);
+            opts.VariableTypes{1} = 'char';
+            opts.VariableTypes([2:end]) = {'double'};
+            data = readtable(file_path, opts, 'ReadRowNames',true);
+            data = removevars(data,{'Var1'});
+        end
+
+
+        function [data] = load_japan(self)
+
+            % load_japan()
+            % load the raw Japan dataset as a matrix
+            %
+            % parameters:
+            % none
+            %
+            % returns:
+            % data : matrix
+            %     matrix containing the raw data for the Japan dataset
+
+            datatable = self.load_japan_table();
+            data = table2array(datatable);
+        end
+
+
     end
 
     

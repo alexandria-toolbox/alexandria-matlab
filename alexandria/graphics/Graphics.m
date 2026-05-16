@@ -1,4 +1,5 @@
-classdef Graphics < handle & RegressionGraphics & VectorAutoregressionGraphics
+classdef Graphics < handle & RegressionGraphics & VectorAutoregressionGraphics ...
+                    & NowcastingGraphics
     
     
     %---------------------------------------------------
@@ -12,7 +13,8 @@ classdef Graphics < handle & RegressionGraphics & VectorAutoregressionGraphics
         clear_folder
     end    
 
-    properties (GetAccess = public, SetAccess = {?RegressionGraphics, ?VectorAutoregressionGraphics})
+    properties (GetAccess = public, SetAccess = {?RegressionGraphics, ...
+                ?VectorAutoregressionGraphics, ?NowcastingGraphics})
         complementary_information
     end
 
@@ -62,6 +64,13 @@ classdef Graphics < handle & RegressionGraphics & VectorAutoregressionGraphics
                 self.var_residuals(show, save);
                 self.var_shocks(show, save);
                 self.var_steady_state(show, save);
+            % if model is nowcasting, make nowcasting insample graphics
+            elseif model_class == 4
+                self.nowcasting_fitted(show, save); 
+                self.nowcasting_residuals(show, save);
+                self.nowcasting_shocks(show, save);
+                self.nowcasting_steady_state(show, save);
+                self.nowcasting_factors(show, save);
             end
         end
 
@@ -74,6 +83,9 @@ classdef Graphics < handle & RegressionGraphics & VectorAutoregressionGraphics
             % if model is vector autoregression, make VAR forecast graphics
             elseif model_class == 2 || model_class == 3
                 self.var_forecasts(show, save);
+            % if model is nowcasting, make nowcasting forecast graphics
+            elseif model_class == 4
+                self.nowcasting_forecasts(show, save);
             end
         end
 
@@ -83,6 +95,9 @@ classdef Graphics < handle & RegressionGraphics & VectorAutoregressionGraphics
             % if model is vector autoregression, make VAR forecast graphics
             if model_class == 2 || model_class == 3
                 self.var_conditional_forecasts(show, save);
+            % if model is nowcasting, make nowcasting conditional forecast graphics
+            elseif model_class == 4
+                self.nowcasting_conditional_forecasts(show, save);    
             end
         end
 
@@ -92,6 +107,9 @@ classdef Graphics < handle & RegressionGraphics & VectorAutoregressionGraphics
             % if model is vector autoregression, make VAR IRF graphics
             if model_class == 2 || model_class == 3
                 self.var_irf(show, save);
+            % if model is nowcasting, make nowcasting IRF graphics
+            elseif model_class == 4
+                self.nowcasting_irf(show, save);                 
             end
         end
 
@@ -101,6 +119,9 @@ classdef Graphics < handle & RegressionGraphics & VectorAutoregressionGraphics
             % if model is vector autoregression, make VAR FEVD graphics
             if model_class == 2 || model_class == 3
                 self.var_fevd(show, save);
+            % if model is nowcasting, make nowcasting FEVD graphics
+            elseif model_class == 4
+                self.nowcasting_fevd(show, save);                 
             end
         end
 
@@ -110,6 +131,9 @@ classdef Graphics < handle & RegressionGraphics & VectorAutoregressionGraphics
             % if model is vector autoregression, make VAR HD graphics
             if model_class == 2 || model_class == 3
                 self.var_hd(show, save);
+            % if model is nowcasting, make nowcasting HD graphics
+            elseif model_class == 4
+                self.nowcasting_hd(show, save);            
             end
         end
 
@@ -147,7 +171,10 @@ classdef Graphics < handle & RegressionGraphics & VectorAutoregressionGraphics
                 self.complete_var_information();
             % if model is VEC/VARMA, add var elements (vec and varma just recycle VAR functions)
             elseif self.complementary_information.model_class == 3
-                self.complete_var_information();               
+                self.complete_var_information();    
+            % if model is nowcasting, add nowcasting elements
+            elseif self.complementary_information.model_class == 4
+                self.complete_nowcasting_information();                 
             end
         end
 

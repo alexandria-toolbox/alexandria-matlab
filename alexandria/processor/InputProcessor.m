@@ -1,5 +1,5 @@
 classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionProcessor ...
-                          & VecVarmaProcessor
+                          & VecVarmaProcessor & NowcastingProcessor
     
     
     properties (GetAccess = public, SetAccess= protected)
@@ -39,7 +39,8 @@ classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionPro
 
 
     properties (GetAccess = public, SetAccess = {?RegressionProcessor, ...
-                ?VectorAutoregressionProcessor, ?VecVarmaProcessor})
+                ?VectorAutoregressionProcessor, ?VecVarmaProcessor, ...
+                ?NowcastingProcessor})
         results_information
         graphics_information
     end
@@ -93,7 +94,10 @@ classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionPro
                 self.make_var_information();
             % if model is model 3, additionally make information for VEC/VARMA models
             elseif self.model == 3
-                self.make_vec_varma_information();                
+                self.make_vec_varma_information();    
+            % if model is model 4, additionally make information for nowcasting models
+            elseif self.model == 4
+                self.make_nowcasting_information();                  
             end
             % finally add complementary information for applications
             self.make_application_information();
@@ -119,7 +123,10 @@ classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionPro
                 self.make_var_graphics_information();
             % if model is model 3, additionally make information for VEC/VARMA
             elseif self.model == 3
-                self.make_vec_varma_graphics_information();                
+                self.make_vec_varma_graphics_information();     
+            % if model is model 4, additionally make information for nowcasting
+            elseif self.model == 4
+                self.make_nowcasting_graphics_information();                  
             end
         end
 
@@ -168,7 +175,10 @@ classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionPro
                 self.vector_autoregression_inputs();
             % if model is model 3, get user inputs for vec/varma
             elseif self.model == 3
-                self.vec_varma_inputs();                
+                self.vec_varma_inputs();   
+            % if model is model 4, get user inputs for nowcasting
+            elseif self.model == 4
+                self.nowcasting_inputs(); 
             end
         end
             
@@ -223,14 +233,17 @@ classdef InputProcessor < handle & RegressionProcessor & VectorAutoregressionPro
             % else, if model is model 3, get data for vec/varma
             elseif self.model == 3
                 self.vec_varma_data();
+            % else, if model is model 4, get data for nowcasting
+            elseif self.model == 4
+                self.nowcasting_data();                
             end
         end
         
         
         function [model] = get_model(self)
         model = self.user_inputs.tab_1.model;
-            if ~ismember(model, [1 2 3])
-                error(['Value error for model. Should be 1, 2 or 3.']);
+            if ~ismember(model, [1 2 3 4])
+                error(['Value error for model. Should be 1, 2, 3 or 4.']);
             end
         end
         

@@ -134,7 +134,7 @@ classdef Tab1Interface < handle
             self.t1_mnu1 = uicontrol('style', 'popupmenu');
             set(self.t1_mnu1, 'position',[38 345 250 50]);            
             set(self.t1_mnu1, 'String', {'1. linear regression', '2. vector autoregression', ...
-                                         '3. vec/varma'});    
+                                         '3. vec/varma', '4. nowcasting'});    
             set(self.t1_mnu1, 'Value', self.user_inputs.tab_1.model);
             set(self.t1_mnu1, 'CallBack', @self.cb_t1_mnu1);
 

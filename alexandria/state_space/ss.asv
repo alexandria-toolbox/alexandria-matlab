@@ -139,6 +139,7 @@ classdef ss
                 Z(t,:) = rn.multivariate_normal(z_bar_tt1, Upsilon_bar_tt1);   
             end       
         end        
+
         
         
         function [Z_tt Z_tt1 Ups_tt Ups_tt1] = conditional_forecast_kalman_filter(X, A, Omega, C, B, Upsilon, z_00, Upsilon_00, T, n, k)
@@ -656,14 +657,50 @@ classdef ss
                 z_t1 = Z(t+1,:)';
                 % Xi_t computation
                 Xi_t = Upsilon_tt * B' / Upsilon_t1t;
-                % step 1
-                z_bar_tt1 = z_tt + Xi_t * (z_t1 - z_t1t);
-                % step 2
-                Upsilon_bar_tt1 = Upsilon_tt - Xi_t * B * Upsilon_tt + 1e-10 * eye(f_dim);
-                % step 3
-                Z(t,:) = rn.multivariate_normal(z_bar_tt1, Upsilon_bar_tt1);
-            end
+
+            % # backward pass, other periods
+            % for t in range(T-2,-1,-1):
+            %     # period-specific parameters
+            %     z_tt = Z_tt[t]
+            %     z_t1t = Z_tt1[t+1]
+            %     Upsilon_tt = Ups_tt[:,:,t]
+            %     Upsilon_t1t = Ups_tt1[:,:,t+1] + 1e-10 * np.eye(f_dim)
+            %     z_t1 = Z[t+1]
+            %     # Xi_t computation
+            %     Xi_t = Upsilon_tt @ la.slash_inversion(B.T, Upsilon_t1t)
+            %     # step 1
+            %     z_bar_tt1 = z_tt + Xi_t @ (z_t1 - z_t1t)
+            %     # step 2
+            %     Upsilon_bar_tt1 = Upsilon_tt - Xi_t @ B @ Upsilon_tt + 1e-10 * np.eye(f_dim)
+            %     # step 3
+            %     Z[t] = rng.multivariate_normal(z_bar_tt1, Upsilon_bar_tt1)
         end
+
+
+            % 
+            % backward pass, other periods
+            % for t=T-1:-1:1
+            %     period-specific parameters
+            %     B_t1 = B(:,:,t+1);
+            %     z_tt = Z_tt(t,:)';
+            %     z_t1t = Z_tt1(t+1,:)';
+            %     Upsilon_tt = Ups_tt(:,:,t);
+            %     Upsilon_t1t = Ups_tt1(:,:,t+1);
+            %     z_t1 = Z(t+1,:)';
+            %     Xi_t computation
+            %     Xi_t = Upsilon_tt * B_t1' / Upsilon_t1t;
+            %     step 1
+            %     z_bar_tt1 = z_tt + Xi_t * (z_t1 - z_t1t);
+            %     step 2
+            %     Upsilon_bar_tt1 = Upsilon_tt - Xi_t * B_t1 * Upsilon_tt;
+            %     step 3
+            %     Z(t,:) = rn.multivariate_normal(z_bar_tt1, Upsilon_bar_tt1);   
+            % end  
+
+
+
+
+
 
 
         function [Gamma_tt, Gamma_tt1, Ups_tt, Ups_tt1] = mfbvar_forward_pass(yo_, L_, F, mu_, n, p, Upsilon, T_, gamma_00, Upsilon_00)
